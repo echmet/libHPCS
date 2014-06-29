@@ -198,6 +198,7 @@ static enum HPCS_ParseCode autodetect_file_type(FILE* datafile, enum HPCS_File_T
 	else
 		*file_type = HPCS_TYPE_UNKNOWN;
 
+	free(type_str);
 	free(type_id);
 	return PARSE_OK;
 }
@@ -330,6 +331,7 @@ static enum HPCS_ParseCode read_date(FILE* datafile, struct HPCS_Date* date)
 	/* Get second */
 	date->second = strtoul(ms_delim + 1, NULL, 10);
 
+	free(date_str);
 	return PARSE_OK;
 }
 
