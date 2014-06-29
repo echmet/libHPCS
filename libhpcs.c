@@ -4,6 +4,11 @@
 #include <stdlib.h>
 #include <string.h>
 
+struct HPCS_MeasuredData* hpcs_alloc()
+{
+	return malloc(sizeof(struct HPCS_MeasuredData));
+}
+
 char* hpcs_error_to_string(const enum HPCS_RetCode err)
 {
 	char* msg;
@@ -34,6 +39,21 @@ char* hpcs_error_to_string(const enum HPCS_RetCode err)
 		strcpy(msg, HPCS_E__UNKNOWN_EC_STR);
 		return msg;
 	}
+}
+
+void hpcs_free(struct HPCS_MeasuredData* const mdata)
+{
+	if (mdata == NULL)
+		return;
+	free(mdata->file_description);
+	free(mdata->sample_info);
+	free(mdata->operator_name);
+	free(mdata->method_name);
+	free(mdata->cs_ver);
+	free(mdata->cs_rev);
+	free(mdata->y_units);
+	free(mdata->data);
+	free(mdata);
 }
 
 enum HPCS_RetCode hpcs_read_file(const char* filename, struct HPCS_MeasuredData* mdata)

@@ -54,11 +54,15 @@ struct HPCS_MeasuredData {
 };
 
 #ifdef __WIN32__
-__declspec(dllexport) enum HPCS_RetCode __cdecl hpcs_read_file(const char* const filename, struct HPCS_MeasuredData* mdata);
+__declspec(dllexport) struct HPCS_MeasuredData* __cdecl hpcs_alloc();
+__declspec(dllexport) void __cdecl hpcs_free(struct HPCS_MeasuredData* const mdata);
 __declspec(dllexport) char* __cdecl hpcs_error_to_string(const enum HPCS_RetCode);
+__declspec(dllexport) enum HPCS_RetCode __cdecl hpcs_read_file(const char* const filename, struct HPCS_MeasuredData* mdata);
 #else
-enum HPCS_RetCode hpcs_read_file(const char* const filename, struct HPCS_MeasuredData* mdata);
+struct HPCS_MeasuredData* hpcs_alloc();
+void hpcs_free(struct HPCS_MeasuredData* const mdata);
 char* hpcs_error_to_string(const enum HPCS_RetCode);
+enum HPCS_RetCode hpcs_read_file(const char* const filename, struct HPCS_MeasuredData* mdata);
 #endif
 
 #ifdef __cplusplus
