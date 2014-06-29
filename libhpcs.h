@@ -1,3 +1,7 @@
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stddef.h>
 #include <stdint.h>
 
@@ -54,4 +58,8 @@ __declspec(dllexport) enum HPCS_RetCode __cdecl hpcs_read_file(const char* const
 #else
 enum HPCS_RetCode hpcs_read_file(const char* const filename, struct HPCS_MeasuredData* mdata);
 char* hpcs_error_to_string(const enum HPCS_RetCode);
+#endif
+
+#ifdef __cplusplus
+}
 #endif
