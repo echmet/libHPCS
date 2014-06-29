@@ -55,6 +55,7 @@ struct HPCS_MeasuredData {
 
 #ifdef __WIN32__
 __declspec(dllexport) enum HPCS_RetCode __cdecl hpcs_read_file(const char* const filename, struct HPCS_MeasuredData* mdata);
+__declspec(dllexport) char* __cdecl hpcs_error_to_string(const enum HPCS_RetCode);
 #else
 enum HPCS_RetCode hpcs_read_file(const char* const filename, struct HPCS_MeasuredData* mdata);
 char* hpcs_error_to_string(const enum HPCS_RetCode);
