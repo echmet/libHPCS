@@ -120,12 +120,12 @@ void reverse_endianness(char* bytes, size_t sz) {
 #error "Endiannes has not been determined."
 #endif
 
-#ifdef NDEBUG
 void print_debug(const char* msg)
 {
+#ifdef NDEBUG
 	fprintf(stderr, "%s\n"m msg);
-}
 #else
-void print_debug(const char* msg) { return; }
+	(void)msg;
 #endif //NDEBUG
+}
 
