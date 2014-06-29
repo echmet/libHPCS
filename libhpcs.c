@@ -95,7 +95,7 @@ enum HPCS_RetCode hpcs_read_file(const char* filename, struct HPCS_MeasuredData*
 		goto out;
 	}
 
-	if (mdata->file_type == TYPE_CE_DAD) {
+	if (mdata->file_type == HPCS_TYPE_CE_DAD) {
 		pret = read_dad_wavelength(datafile, WAVELENGTH_MEASURED, &mdata->dad_wavelength_msr);
 		if (pret != PARSE_OK && pret != PARSE_W_NO_DATA) {
 			ret = HPCS_E_PARSE_ERROR;
@@ -109,20 +109,20 @@ enum HPCS_RetCode hpcs_read_file(const char* filename, struct HPCS_MeasuredData*
 	}
 
 	switch (mdata->file_type) {
-	case TYPE_CE_CURRENT:
-		pret = read_fixed_signal(datafile, &mdata->data, &mdata->data_count, CE_CURRENT_STEP, mdata->sampling_rate);
-		break;
-	case TYPE_CE_CCD:
+	case HPCS_TYPE_CE_CCD:
 		pret = read_floating_signal(datafile, &mdata->data, &mdata->data_count, CE_CCD_STEP, mdata->sampling_rate);
 		break;
-	case TYPE_CE_DAD:
+	case HPCS_TYPE_CE_CURRENT:
+		pret = read_fixed_signal(datafile, &mdata->data, &mdata->data_count, CE_CURRENT_STEP, mdata->sampling_rate);
+		break;
+	case HPCS_TYPE_CE_DAD:
 		pret = read_fixed_signal(datafile, &mdata->data, &mdata->data_count, CE_DAD_STEP, mdata->sampling_rate);
 		break;
-	case TYPE_CE_POWER:
-	case TYPE_CE_VOLTAGE:
+	case HPCS_TYPE_CE_POWER:
+	case HPCS_TYPE_CE_VOLTAGE:
 		pret = read_fixed_signal(datafile, &mdata->data, &mdata->data_count, CE_PWR_VOLT_STEP, mdata->sampling_rate);
 		break;
-	case TYPE_UNKNOWN:
+	case HPCS_TYPE_UNKNOWN:
 		ret = HPCS_E_UNKNOWN_TYPE;
 		goto out;
 	}
@@ -161,17 +161,17 @@ static enum HPCS_ParseCode autodetect_file_type(FILE* datafile, enum HPCS_File_T
 	type_id[len] = 0;
 
 	if (strcmp(FILE_TYPE_CE_CCD, type_id) == 0)
-		*file_type = TYPE_CE_CCD;
+		*file_type = HPCS_TYPE_CE_CCD;
 	else if (strcmp(FILE_TYPE_CE_CURRENT, type_id) == 0)
-		*file_type = TYPE_CE_CURRENT;
+		*file_type = HPCS_TYPE_CE_CURRENT;
 	else if (strstr(type_id, FILE_TYPE_CE_DAD) != NULL)
-		*file_type = TYPE_CE_DAD;
+		*file_type = HPCS_TYPE_CE_DAD;
 	else if (strcmp(FILE_TYPE_CE_POWER, type_id) == 0)
-		*file_type = TYPE_CE_POWER;
+		*file_type = HPCS_TYPE_CE_POWER;
 	else if (strcmp(FILE_TYPE_CE_VOLTAGE, type_id) == 0)
-		*file_type = TYPE_CE_VOLTAGE;
+		*file_type = HPCS_TYPE_CE_VOLTAGE;
 	else
-		*file_type = TYPE_UNKNOWN;
+		*file_type = HPCS_TYPE_UNKNOWN;
 
 	return PARSE_OK;
 }
