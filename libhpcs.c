@@ -178,6 +178,7 @@ static enum HPCS_ParseCode autodetect_file_type(FILE* datafile, enum HPCS_File_T
 	else
 		*file_type = HPCS_TYPE_UNKNOWN;
 
+	free(type_id);
 	return PARSE_OK;
 }
 
