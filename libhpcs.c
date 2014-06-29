@@ -64,6 +64,11 @@ enum HPCS_RetCode hpcs_read_file(const char* filename, struct HPCS_MeasuredData*
 		ret = HPCS_E_PARSE_ERROR;
 		goto out;
 	}
+	pret = read_string_at_offset(datafile, DATA_OFFSET_METHOD_NAME, &mdata->method_name);
+	if (pret != PARSE_OK) {
+		ret = HPCS_E_PARSE_ERROR;
+		goto out;
+	}
 	pret = read_date(datafile, &mdata->date);
 	if (pret != PARSE_OK) {
 		ret = HPCS_E_PARSE_ERROR;
