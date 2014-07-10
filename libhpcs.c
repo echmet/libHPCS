@@ -131,15 +131,9 @@ enum HPCS_RetCode hpcs_read_file(const char* filename, struct HPCS_MeasuredData*
 	}
 
 	if (mdata->file_type == HPCS_TYPE_CE_DAD) {
-		pret = read_dad_wavelength(datafile, WAVELENGTH_MEASURED, &mdata->dad_wavelength_msr);
+		pret = read_dad_wavelength(datafile, &mdata->dad_wavelength_msr, &mdata->dad_wavelength_ref);
 		if (pret != PARSE_OK && pret != PARSE_W_NO_DATA) {
 			PR_DEBUG("Cannot read measured wavelength");
-			ret = HPCS_E_PARSE_ERROR;
-			goto out;
-		}
-		pret = read_dad_wavelength(datafile, WAVELENGTH_REFERENCE, &mdata->dad_wavelength_ref);
-		if (pret != PARSE_OK && pret != PARSE_W_NO_DATA) {
-			PR_DEBUG("Cannot read reference wavelength");
 			ret = HPCS_E_PARSE_ERROR;
 			goto out;
 		}
@@ -227,45 +221,105 @@ static enum HPCS_DataCheckCode check_for_marker(const char* const segment, size_
 		return DCHECK_E_NO_MARKER;
 }
 
-static enum HPCS_ParseCode read_dad_wavelength(FILE* datafile, const enum HPCS_Wavelength_Type wl_type, uint16_t* const wavelength)
+static enum HPCS_ParseCode read_dad_wavelength(FILE* datafile, struct HPCS_Wavelength* const measured, struct HPCS_Wavelength* const reference)
 {
-	char* start_idx, *end_idx, *temp, *type_str;
+	char* start_idx, *interv_idx, *end_idx, *temp, *str;
 	size_t len;
-	enum HPCS_ParseCode pret;
+	enum HPCS_ParseCode pret, ret;
 
-	*wavelength = 0;
-	pret = read_string_at_offset(datafile, DATA_OFFSET_DEVSIG_INFO, &type_str);
+	measured->wavelength = 0;
+	measured->interval = 0;
+	reference->wavelength = 0;
+	reference->interval = 0;
+	pret = read_string_at_offset(datafile, DATA_OFFSET_DEVSIG_INFO, &str);
 	if (pret != PARSE_OK)
 		return pret;
 
-	switch (wl_type) {
-	case WAVELENGTH_MEASURED:
-		start_idx = strstr(type_str, WAVELENGTH_MEASURED_TEXT);
-		break;
-	case WAVELENGTH_REFERENCE:
-		start_idx = strstr(type_str, WAVELENGTH_REFERENCE_TEXT);
-		break;
-	default:
-		return PARSE_E_INV_PARAM;
+	/* Read MEASURED wavelength */
+	start_idx = strstr(str, WAVELENGTH_MEASURED_TEXT) + strlen(WAVELENGTH_MEASURED_TEXT);
+	if (start_idx == NULL) {
+		ret = PARSE_W_NO_DATA;
+		goto out;
 	}
-
-	if (start_idx == NULL)
-		return PARSE_W_NO_DATA;
-
-	end_idx = strchr(start_idx, WAVELENGTH_DELIMITER_TEXT);
-	if (end_idx == NULL)
-		return PARSE_E_NOT_FOUND;
-
-	len = end_idx - (start_idx + 4);
+	interv_idx = strchr(start_idx, WAVELENGTH_DELIMITER_TEXT);
+	if (interv_idx == NULL) {
+		PR_DEBUG("No spectral interval value");
+		ret = PARSE_E_NOT_FOUND;
+		goto out;
+	}
+	end_idx = strchr(interv_idx, WAVELENGTH_END_TEXT);
+	if (end_idx == NULL) {
+		PR_DEBUG("No measured/reference wavelength delimiter found");
+		ret = PARSE_E_NOT_FOUND;
+		goto out;
+	}
+	len = interv_idx - start_idx;
 	temp = malloc(len + 1);
-	if (temp == NULL)
-		return PARSE_E_NO_MEM;
-	memcpy(temp, start_idx + 4, len);
+	if (temp == NULL) {
+		PR_DEBUG("No memory for temporary string");
+		ret = PARSE_E_NO_MEM;
+		goto out;
+	}
+	memcpy(temp, start_idx, len);
 	temp[len] = 0;
+	measured->wavelength = strtoul(temp, NULL, 10);
 
-	*wavelength = strtoul(temp, NULL, 10);
+	/* Read MEASURED spectral interval */
+	if (end_idx - interv_idx - 1 > len) {
+		free(temp);
+		temp = malloc(end_idx - interv_idx - 1);
+		if (temp == NULL) {
+			PR_DEBUG("No memory for temporary string");
+			ret = PARSE_E_NO_MEM;
+			goto out;
+		}
+	}
+	len = end_idx - interv_idx - 2;
+	memcpy(temp, interv_idx + 1, len);
+	temp[len] = 0;
+	measured->interval = strtoul(temp, NULL, 10);
+
+
+	/* Read REFERENCE wavelength */
+	start_idx = strstr(end_idx, WAVELENGTH_REFERENCE_TEXT) + strlen(WAVELENGTH_REFERENCE_TEXT);
+	if (start_idx == NULL) {
+		PR_DEBUG("No reference wavelength data");
+		ret = PARSE_W_NO_DATA;
+		goto out2;
+	}
+	interv_idx = strchr(start_idx, WAVELENGTH_DELIMITER_TEXT);
+	if (interv_idx == NULL) {
+		/* Is the reference wavelength disabled? */
+		if (strcmp(start_idx, WAVELENGTH_REFERENCE_OFF_TEXT) == 0) {
+			ret = PARSE_OK;
+			goto out2;
+		}
+		PR_DEBUG("No reference spectral interval but reference wavelength is not 'off'");
+		ret = PARSE_E_NOT_FOUND;
+		goto out2;
+	}
+	if (interv_idx - start_idx > len + 1) {
+		free(temp);
+		temp = malloc(interv_idx - start_idx + 1);
+		if (temp == NULL) {
+			PR_DEBUG("No memory for temporary string");
+			ret = PARSE_E_NO_MEM;
+			goto out;
+		}
+	}
+	len = interv_idx - start_idx;
+	memcpy(temp, start_idx, len);
+	temp[len] = 0;
+	reference->wavelength = strtoul(temp, NULL, 10);
+	reference->interval = strtoul(interv_idx + 1, NULL, 10);
+	ret = PARSE_OK;
+
+out2:
+	printf("%u %u %u %u\n", measured->wavelength, measured->interval, reference->wavelength, reference->interval);
 	free(temp);
-	return PARSE_OK;
+out:
+	free(str);
+	return ret;
 }
 
 static enum HPCS_ParseCode read_date(FILE* datafile, struct HPCS_Date* date)

@@ -36,7 +36,9 @@ const char* FILE_TYPE_CE_POWER = "HPCE1P";
 /* Char and text values */
 const char* WAVELENGTH_MEASURED_TEXT = "Sig=";
 const char* WAVELENGTH_REFERENCE_TEXT = "Ref=";
-const char WAVELENGTH_DELIMITER_TEXT = ',';
+const char* WAVELENGTH_REFERENCE_OFF_TEXT = "off";
+const char WAVELENGTH_DELIMITER_TEXT = (const char)(0x2C);
+const char WAVELENGTH_END_TEXT = (const char)(0x20);
 const char DATA_FILE_COMMA = (const char)(0x2C);
 const char DATA_FILE_DASH = (const char)(0x2D);
 const char DATA_FILE_COLON = (const char)(0x3A);
@@ -90,7 +92,7 @@ const char* HPCS_E__UNKNOWN_EC_STR = "Unknown error code.";
 
 static enum HPCS_ParseCode autodetect_file_type(FILE* datafile, enum HPCS_File_Type* file_type);
 static enum HPCS_DataCheckCode check_for_marker(const char* const segment, size_t* const next_marker_idx);
-static enum HPCS_ParseCode read_dad_wavelength(FILE* datafile, const enum HPCS_Wavelength_Type wl_type, uint16_t* const wavelength);
+static enum HPCS_ParseCode read_dad_wavelength(FILE* datafile, struct HPCS_Wavelength* const measured, struct HPCS_Wavelength* const reference);
 static uint8_t month_to_number(const char* const month);
 static enum HPCS_ParseCode read_date(FILE* datafile, struct HPCS_Date* const date);
 static enum HPCS_ParseCode read_fixed_signal(FILE* datafile, struct HPCS_TVPair** pairs, size_t* pairs_count,
