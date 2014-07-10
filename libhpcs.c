@@ -474,6 +474,7 @@ static enum HPCS_ParseCode read_fixed_signal(FILE* datafile, struct HPCS_TVPair*
 	switch (dret) {
 	case DCHECK_EOF:
 	case DCHECK_E_NO_MARKER:
+		PR_DEBUG("First segment is not a marker");
 		return PARSE_E_NOT_FOUND; /* First segment is not a marker */
 	default:
 		break;
@@ -485,6 +486,7 @@ static enum HPCS_ParseCode read_fixed_signal(FILE* datafile, struct HPCS_TVPair*
 
 	while (read_file) {
 		if (ferror(datafile)) {
+			PR_DEBUG("Cannot read stream");
 			free(*pairs);
 			*pairs = NULL;
 			return PARSE_E_CANT_READ;
@@ -494,6 +496,7 @@ static enum HPCS_ParseCode read_fixed_signal(FILE* datafile, struct HPCS_TVPair*
 
 		r = fread(raw, SEGMENT_SIZE, 1, datafile);
 		if (r != 1) {
+			PR_DEBUG("Cannot read segment");
 			free(*pairs);
 			*pairs = NULL;
 			return PARSE_E_CANT_READ;
@@ -506,6 +509,7 @@ static enum HPCS_ParseCode read_fixed_signal(FILE* datafile, struct HPCS_TVPair*
 			nptr = realloc(*pairs, sizeof(struct HPCS_TVPair) * alloc_size);
 
 			if (nptr == NULL) {
+				PR_DEBUG("No memory to store data");
 				free(*pairs);
 				*pairs = NULL;
 				return PARSE_E_NO_MEM;
@@ -523,6 +527,7 @@ static enum HPCS_ParseCode read_fixed_signal(FILE* datafile, struct HPCS_TVPair*
 				read_file = false;
 				break;
 			default:
+				PR_DEBUG("Marker was expected but it was not found");
 				free(*pairs);
 				*pairs = NULL;
 				return PARSE_E_NOT_FOUND;
