@@ -71,51 +71,61 @@ enum HPCS_RetCode hpcs_read_file(const char* filename, struct HPCS_MeasuredData*
 
 	pret = read_string_at_offset(datafile, DATA_OFFSET_FILE_DESC, &mdata->file_description);
 	if (pret != PARSE_OK) {
+		PR_DEBUG("Cannot read file description");
 		ret = HPCS_E_PARSE_ERROR;
 		goto out;
 	}
 	pret = read_string_at_offset(datafile, DATA_OFFSET_SAMPLE_INFO, &mdata->sample_info);
 	if (pret != PARSE_OK) {
+		PR_DEBUG("Cannot read sample info");
 		ret = HPCS_E_PARSE_ERROR;
 		goto out;
 	}
 	pret = read_string_at_offset(datafile, DATA_OFFSET_OPERATOR_NAME, &mdata->operator_name);
 	if (pret != PARSE_OK) {
+		PR_DEBUG("Cannot read operator name");
 		ret = HPCS_E_PARSE_ERROR;
 		goto out;
 	}
 	pret = read_string_at_offset(datafile, DATA_OFFSET_METHOD_NAME, &mdata->method_name);
 	if (pret != PARSE_OK) {
+		PR_DEBUG("Cannot read method name");
 		ret = HPCS_E_PARSE_ERROR;
 		goto out;
 	}
 	pret = read_date(datafile, &mdata->date);
 	if (pret != PARSE_OK) {
+		PR_DEBUG("Cannot read date of measurement");
 		ret = HPCS_E_PARSE_ERROR;
 		goto out;
 	}
 	pret = read_string_at_offset(datafile, DATA_OFFSET_CS_VER, &mdata->cs_ver);
 	if (pret != PARSE_OK) {
+		PR_DEBUG("Cannot read ChemStation software version");
 		ret = HPCS_E_PARSE_ERROR;
 		goto out;
 	}
 	pret = read_string_at_offset(datafile, DATA_OFFSET_Y_UNITS, &mdata->y_units);
 	if (pret != PARSE_OK) {
+		PR_DEBUG("Cannot read values of Y axis");
 		ret = HPCS_E_PARSE_ERROR;
 		goto out;
 	}
 	pret = read_string_at_offset(datafile, DATA_OFFSET_CS_REV, &mdata->cs_rev);
 	if (pret != PARSE_OK) {
+		PR_DEBUG("Cannot read ChemStation software revision");
 		ret = HPCS_E_PARSE_ERROR;
 		goto out;
 	}
 	pret = read_sampling_rate(datafile, &mdata->sampling_rate);
 	if (pret != PARSE_OK) {
+		PR_DEBUG("Cannot read sampling rate of the file");
 		ret = HPCS_E_PARSE_ERROR;
 		goto out;
 	}
 	pret = autodetect_file_type(datafile, &mdata->file_type);
 	if (pret != PARSE_OK) {
+		PR_DEBUG("Cannot determine the type of file");
 		ret = HPCS_E_PARSE_ERROR;
 		goto out;
 	}
@@ -123,11 +133,13 @@ enum HPCS_RetCode hpcs_read_file(const char* filename, struct HPCS_MeasuredData*
 	if (mdata->file_type == HPCS_TYPE_CE_DAD) {
 		pret = read_dad_wavelength(datafile, WAVELENGTH_MEASURED, &mdata->dad_wavelength_msr);
 		if (pret != PARSE_OK && pret != PARSE_W_NO_DATA) {
+			PR_DEBUG("Cannot read measured wavelength");
 			ret = HPCS_E_PARSE_ERROR;
 			goto out;
 		}
 		pret = read_dad_wavelength(datafile, WAVELENGTH_REFERENCE, &mdata->dad_wavelength_ref);
 		if (pret != PARSE_OK && pret != PARSE_W_NO_DATA) {
+			PR_DEBUG("Cannot read reference wavelength");
 			ret = HPCS_E_PARSE_ERROR;
 			goto out;
 		}
@@ -153,6 +165,7 @@ enum HPCS_RetCode hpcs_read_file(const char* filename, struct HPCS_MeasuredData*
 	}
 
 	if (pret != PARSE_OK) {
+		PR_DEBUG("Cannot parse data in the file");
 		ret = HPCS_E_PARSE_ERROR;
  	}
 	else
