@@ -123,7 +123,12 @@ void reverse_endianness(char* bytes, size_t sz) {
 #endif
 
 #ifndef NDEBUG
-#define PR_DEBUG(msg) fprintf(stderr, msg)
+ #ifdef _MSC_VER
+ #define __func__ __FUNCTION__
+ #endif
+ #define PR_DEBUGF(fmt, ...) fprintf(stderr, "[%s()] "fmt, __func__, __VA_ARGS__)
+ #define PR_DEBUG(msg) fprintf(stderr, "[%s()] "msg, __func__)
 #else
-#define PR_DEBUG(msg)
+ #define PR_DEBUGF(fmt, msg)
+ #define PR_DEBUG(msg)
 #endif

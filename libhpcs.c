@@ -527,7 +527,7 @@ static enum HPCS_ParseCode read_fixed_signal(FILE* datafile, struct HPCS_TVPair*
 				read_file = false;
 				break;
 			default:
-				PR_DEBUG("Marker was expected but it was not found\n");
+				PR_DEBUGF("%s %lu\n", "Marker was expected but it was not found at:", segments_read);
 				free(*pairs);
 				*pairs = NULL;
 				return PARSE_E_NOT_FOUND;
