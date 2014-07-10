@@ -29,7 +29,7 @@ typedef size_t HPCS_segsize;
 /* Identifiers of file types found at offset 0x1075 */
 const char* FILE_TYPE_CE_CCD = "HPCE1L";
 const char* FILE_TYPE_CE_CURRENT = "HPCE1C";
-const char* FILE_TYPE_CE_DAD = "DAD1";
+const char* FILE_TYPE_CE_DAD = "DAD";
 const char* FILE_TYPE_CE_VOLTAGE = "HPCE1V";
 const char* FILE_TYPE_CE_POWER = "HPCE1P";
 
