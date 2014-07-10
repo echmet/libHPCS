@@ -123,7 +123,7 @@ void reverse_endianness(char* bytes, size_t sz) {
 #endif
 
 #ifndef NDEBUG
-#define PR_DEBUG(msg) fprintf(stderr, "%s\n", msg);
+#define PR_DEBUG(msg) fprintf(stderr, msg)
 #else
 #define PR_DEBUG(msg)
 #endif

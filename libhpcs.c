@@ -84,61 +84,61 @@ enum HPCS_RetCode hpcs_read_file(const char* filename, struct HPCS_MeasuredData*
 
 	pret = read_string_at_offset(datafile, DATA_OFFSET_FILE_DESC, &mdata->file_description);
 	if (pret != PARSE_OK) {
-		PR_DEBUG("Cannot read file description");
+		PR_DEBUG("Cannot read file description\n");
 		ret = HPCS_E_PARSE_ERROR;
 		goto out;
 	}
 	pret = read_string_at_offset(datafile, DATA_OFFSET_SAMPLE_INFO, &mdata->sample_info);
 	if (pret != PARSE_OK) {
-		PR_DEBUG("Cannot read sample info");
+		PR_DEBUG("Cannot read sample info\n");
 		ret = HPCS_E_PARSE_ERROR;
 		goto out;
 	}
 	pret = read_string_at_offset(datafile, DATA_OFFSET_OPERATOR_NAME, &mdata->operator_name);
 	if (pret != PARSE_OK) {
-		PR_DEBUG("Cannot read operator name");
+		PR_DEBUG("Cannot read operator name\n");
 		ret = HPCS_E_PARSE_ERROR;
 		goto out;
 	}
 	pret = read_string_at_offset(datafile, DATA_OFFSET_METHOD_NAME, &mdata->method_name);
 	if (pret != PARSE_OK) {
-		PR_DEBUG("Cannot read method name");
+		PR_DEBUG("Cannot read method name\n");
 		ret = HPCS_E_PARSE_ERROR;
 		goto out;
 	}
 	pret = read_date(datafile, &mdata->date);
 	if (pret != PARSE_OK) {
-		PR_DEBUG("Cannot read date of measurement");
+		PR_DEBUG("Cannot read date of measurement\n");
 		ret = HPCS_E_PARSE_ERROR;
 		goto out;
 	}
 	pret = read_string_at_offset(datafile, DATA_OFFSET_CS_VER, &mdata->cs_ver);
 	if (pret != PARSE_OK) {
-		PR_DEBUG("Cannot read ChemStation software version");
+		PR_DEBUG("Cannot read ChemStation software version\n");
 		ret = HPCS_E_PARSE_ERROR;
 		goto out;
 	}
 	pret = read_string_at_offset(datafile, DATA_OFFSET_Y_UNITS, &mdata->y_units);
 	if (pret != PARSE_OK) {
-		PR_DEBUG("Cannot read values of Y axis");
+		PR_DEBUG("Cannot read values of Y axis\n");
 		ret = HPCS_E_PARSE_ERROR;
 		goto out;
 	}
 	pret = read_string_at_offset(datafile, DATA_OFFSET_CS_REV, &mdata->cs_rev);
 	if (pret != PARSE_OK) {
-		PR_DEBUG("Cannot read ChemStation software revision");
+		PR_DEBUG("Cannot read ChemStation software revision\n");
 		ret = HPCS_E_PARSE_ERROR;
 		goto out;
 	}
 	pret = read_sampling_rate(datafile, &mdata->sampling_rate);
 	if (pret != PARSE_OK) {
-		PR_DEBUG("Cannot read sampling rate of the file");
+		PR_DEBUG("Cannot read sampling rate of the file\n");
 		ret = HPCS_E_PARSE_ERROR;
 		goto out;
 	}
 	pret = autodetect_file_type(datafile, &mdata->file_type);
 	if (pret != PARSE_OK) {
-		PR_DEBUG("Cannot determine the type of file");
+		PR_DEBUG("Cannot determine the type of file\n");
 		ret = HPCS_E_PARSE_ERROR;
 		goto out;
 	}
@@ -146,7 +146,7 @@ enum HPCS_RetCode hpcs_read_file(const char* filename, struct HPCS_MeasuredData*
 	if (mdata->file_type == HPCS_TYPE_CE_DAD) {
 		pret = read_dad_wavelength(datafile, &mdata->dad_wavelength_msr, &mdata->dad_wavelength_ref);
 		if (pret != PARSE_OK && pret != PARSE_W_NO_DATA) {
-			PR_DEBUG("Cannot read measured wavelength");
+			PR_DEBUG("Cannot read wavelength\n");
 			ret = HPCS_E_PARSE_ERROR;
 			goto out;
 		}
@@ -172,7 +172,7 @@ enum HPCS_RetCode hpcs_read_file(const char* filename, struct HPCS_MeasuredData*
 	}
 
 	if (pret != PARSE_OK) {
-		PR_DEBUG("Cannot parse data in the file");
+		PR_DEBUG("Cannot parse data in the file\n");
 		ret = HPCS_E_PARSE_ERROR;
  	}
 	else
@@ -256,20 +256,20 @@ static enum HPCS_ParseCode read_dad_wavelength(FILE* datafile, struct HPCS_Wavel
 	}
 	interv_idx = strchr(start_idx, WAVELENGTH_DELIMITER_TEXT);
 	if (interv_idx == NULL) {
-		PR_DEBUG("No spectral interval value");
+		PR_DEBUG("No spectral interval value\n");
 		ret = PARSE_E_NOT_FOUND;
 		goto out;
 	}
 	end_idx = strchr(interv_idx, WAVELENGTH_END_TEXT);
 	if (end_idx == NULL) {
-		PR_DEBUG("No measured/reference wavelength delimiter found");
+		PR_DEBUG("No measured/reference wavelength delimiter found\n");
 		ret = PARSE_E_NOT_FOUND;
 		goto out;
 	}
 	len = interv_idx - start_idx;
 	temp = malloc(len + 1);
 	if (temp == NULL) {
-		PR_DEBUG("No memory for temporary string");
+		PR_DEBUG("No memory for temporary string\n");
 		ret = PARSE_E_NO_MEM;
 		goto out;
 	}
@@ -282,7 +282,7 @@ static enum HPCS_ParseCode read_dad_wavelength(FILE* datafile, struct HPCS_Wavel
 		free(temp);
 		temp = malloc(end_idx - interv_idx - 1);
 		if (temp == NULL) {
-			PR_DEBUG("No memory for temporary string");
+			PR_DEBUG("No memory for temporary string\n");
 			ret = PARSE_E_NO_MEM;
 			goto out;
 		}
@@ -296,7 +296,7 @@ static enum HPCS_ParseCode read_dad_wavelength(FILE* datafile, struct HPCS_Wavel
 	/* Read REFERENCE wavelength */
 	start_idx = strstr(end_idx, WAVELENGTH_REFERENCE_TEXT) + strlen(WAVELENGTH_REFERENCE_TEXT);
 	if (start_idx == NULL) {
-		PR_DEBUG("No reference wavelength data");
+		PR_DEBUG("No reference wavelength data\n");
 		ret = PARSE_W_NO_DATA;
 		goto out2;
 	}
@@ -307,7 +307,7 @@ static enum HPCS_ParseCode read_dad_wavelength(FILE* datafile, struct HPCS_Wavel
 			ret = PARSE_OK;
 			goto out2;
 		}
-		PR_DEBUG("No reference spectral interval but reference wavelength is not 'off'");
+		PR_DEBUG("No reference spectral interval but reference wavelength is not 'off'\n");
 		ret = PARSE_E_NOT_FOUND;
 		goto out2;
 	}
@@ -315,7 +315,7 @@ static enum HPCS_ParseCode read_dad_wavelength(FILE* datafile, struct HPCS_Wavel
 		free(temp);
 		temp = malloc(interv_idx - start_idx + 1);
 		if (temp == NULL) {
-			PR_DEBUG("No memory for temporary string");
+			PR_DEBUG("No memory for temporary string\n");
 			ret = PARSE_E_NO_MEM;
 			goto out;
 		}
@@ -474,7 +474,7 @@ static enum HPCS_ParseCode read_fixed_signal(FILE* datafile, struct HPCS_TVPair*
 	switch (dret) {
 	case DCHECK_EOF:
 	case DCHECK_E_NO_MARKER:
-		PR_DEBUG("First segment is not a marker");
+		PR_DEBUG("First segment is not a marker\n");
 		return PARSE_E_NOT_FOUND; /* First segment is not a marker */
 	default:
 		break;
@@ -486,7 +486,7 @@ static enum HPCS_ParseCode read_fixed_signal(FILE* datafile, struct HPCS_TVPair*
 
 	while (read_file) {
 		if (ferror(datafile)) {
-			PR_DEBUG("Cannot read stream");
+			PR_DEBUG("Cannot read stream\n");
 			free(*pairs);
 			*pairs = NULL;
 			return PARSE_E_CANT_READ;
@@ -496,7 +496,7 @@ static enum HPCS_ParseCode read_fixed_signal(FILE* datafile, struct HPCS_TVPair*
 
 		r = fread(raw, SEGMENT_SIZE, 1, datafile);
 		if (r != 1) {
-			PR_DEBUG("Cannot read segment");
+			PR_DEBUG("Cannot read segment\n");
 			free(*pairs);
 			*pairs = NULL;
 			return PARSE_E_CANT_READ;
@@ -509,7 +509,7 @@ static enum HPCS_ParseCode read_fixed_signal(FILE* datafile, struct HPCS_TVPair*
 			nptr = realloc(*pairs, sizeof(struct HPCS_TVPair) * alloc_size);
 
 			if (nptr == NULL) {
-				PR_DEBUG("No memory to store data");
+				PR_DEBUG("No memory to store data\n");
 				free(*pairs);
 				*pairs = NULL;
 				return PARSE_E_NO_MEM;
@@ -527,7 +527,7 @@ static enum HPCS_ParseCode read_fixed_signal(FILE* datafile, struct HPCS_TVPair*
 				read_file = false;
 				break;
 			default:
-				PR_DEBUG("Marker was expected but it was not found");
+				PR_DEBUG("Marker was expected but it was not found\n");
 				free(*pairs);
 				*pairs = NULL;
 				return PARSE_E_NOT_FOUND;
