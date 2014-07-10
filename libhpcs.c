@@ -6,7 +6,20 @@
 
 struct HPCS_MeasuredData* hpcs_alloc()
 {
-	return malloc(sizeof(struct HPCS_MeasuredData));
+	struct HPCS_MeasuredData* mdata = malloc(sizeof(struct HPCS_MeasuredData));
+	if (mdata == NULL)
+		return NULL;
+
+	mdata->file_description = NULL;
+	mdata->sample_info = NULL;
+	mdata->operator_name = NULL;
+	mdata->method_name = NULL;
+	mdata->cs_ver = NULL;
+	mdata->cs_rev = NULL;
+	mdata->y_units = NULL;
+	mdata->data = NULL;
+
+	return mdata;
 }
 
 char* hpcs_error_to_string(const enum HPCS_RetCode err)
