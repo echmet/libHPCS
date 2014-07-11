@@ -1,3 +1,4 @@
+#include <stdbool.h>
 #include <stdio.h>
 
 enum HPCS_DataCheckCode {
@@ -31,8 +32,10 @@ const char* FILE_TYPE_ID_DAD = "DAD";
 const char* FILE_TYPE_ID_HPCE = "HPCE";
 const char FILE_TYPE_HPCE_CCD = 'L';
 const char FILE_TYPE_HPCE_CURRENT = 'C';
+const char FILE_TYPE_HPCE_POWER_PRESSURE = 'P';
+const char FILE_TYPE_HPCE_POWER = 'E';
+const char FILE_TYPE_HPCE_TEMPERATURE = 'T';
 const char FILE_TYPE_HPCE_VOLTAGE = 'V';
-const char FILE_TYPE_HPCE_POWER = 'P';
 
 /* Char and text values */
 const char* WAVELENGTH_MEASURED_TEXT = "Sig=";
@@ -60,7 +63,7 @@ const char* MON_DEC_STR = "Dec";
 const HPCS_step CE_CURRENT_STEP = 0.01;
 const HPCS_step CE_CCD_STEP = 0.0000596046450027643;
 const HPCS_step CE_DAD_STEP = 0.000476837158203;
-const HPCS_step CE_PWR_VOLT_STEP = 0.001;
+const HPCS_step CE_WORK_PARAM_STEP = 0.001;
 
 /* Offsets containing data of interest in .ch files */
 const HPCS_offset DATA_OFFSET_FILE_DESC = 0x15B;
@@ -74,6 +77,9 @@ const HPCS_offset DATA_OFFSET_SAMPLING_RATE = 0x101C;
 const HPCS_offset DATA_OFFSET_Y_UNITS = 0x104C;
 const HPCS_offset DATA_OFFSET_DEVSIG_INFO = 0x1075;
 const HPCS_offset DATA_OFFSET_DATA_START = 0x1800;
+
+/* Known ChemStation format versions */
+const char* CHEMSTAT_VER_B0625 = "B.06.25 [0003]";
 
 /* Values of markers found in .ch files */
 const char BIN_MARKER_A = 0x10;
@@ -91,8 +97,10 @@ const char* HPCS_E_PARSE_ERROR_STR = "Cannot parse the specified file, it might 
 const char* HPCS_E_UNKNOWN_TYPE_STR = "The specified file contains an unknown type of measurement.";
 const char* HPCS_E__UNKNOWN_EC_STR = "Unknown error code.";
 
-static enum HPCS_ParseCode autodetect_file_type(FILE* datafile, enum HPCS_File_Type* file_type);
+static enum HPCS_ParseCode autodetect_file_type(FILE* datafile, enum HPCS_File_Type* file_type, const bool p_means_pressure);
 static enum HPCS_DataCheckCode check_for_marker(const char* const segment, size_t* const next_marker_idx);
+static HPCS_step guess_current_step(struct HPCS_MeasuredData* const mdata);
+static bool guess_p_meaning(struct HPCS_MeasuredData* const mdata);
 static enum HPCS_ParseCode read_dad_wavelength(FILE* datafile, struct HPCS_Wavelength* const measured, struct HPCS_Wavelength* const reference);
 static uint8_t month_to_number(const char* const month);
 static enum HPCS_ParseCode read_date(FILE* datafile, struct HPCS_Date* const date);

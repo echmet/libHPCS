@@ -136,7 +136,7 @@ enum HPCS_RetCode hpcs_read_file(const char* filename, struct HPCS_MeasuredData*
 		ret = HPCS_E_PARSE_ERROR;
 		goto out;
 	}
-	pret = autodetect_file_type(datafile, &mdata->file_type);
+	pret = autodetect_file_type(datafile, &mdata->file_type, guess_p_meaning(mdata));
 	if (pret != PARSE_OK) {
 		PR_DEBUG("Cannot determine the type of file\n");
 		ret = HPCS_E_PARSE_ERROR;
@@ -157,14 +157,16 @@ enum HPCS_RetCode hpcs_read_file(const char* filename, struct HPCS_MeasuredData*
 		pret = read_floating_signal(datafile, &mdata->data, &mdata->data_count, CE_CCD_STEP, mdata->sampling_rate);
 		break;
 	case HPCS_TYPE_CE_CURRENT:
-		pret = read_fixed_signal(datafile, &mdata->data, &mdata->data_count, CE_CURRENT_STEP, mdata->sampling_rate);
+		pret = read_fixed_signal(datafile, &mdata->data, &mdata->data_count, guess_current_step(mdata), mdata->sampling_rate);
 		break;
 	case HPCS_TYPE_CE_DAD:
 		pret = read_fixed_signal(datafile, &mdata->data, &mdata->data_count, CE_DAD_STEP, mdata->sampling_rate);
 		break;
 	case HPCS_TYPE_CE_POWER:
+	case HPCS_TYPE_CE_PRESSURE:
+	case HPCS_TYPE_CE_TEMPERATURE:
 	case HPCS_TYPE_CE_VOLTAGE:
-		pret = read_fixed_signal(datafile, &mdata->data, &mdata->data_count, CE_PWR_VOLT_STEP, mdata->sampling_rate);
+		pret = read_fixed_signal(datafile, &mdata->data, &mdata->data_count, CE_WORK_PARAM_STEP, mdata->sampling_rate);
 		break;
 	case HPCS_TYPE_UNKNOWN:
 		ret = HPCS_E_UNKNOWN_TYPE;
@@ -182,7 +184,7 @@ out:
 	return ret;
 }
 
-static enum HPCS_ParseCode autodetect_file_type(FILE* datafile, enum HPCS_File_Type* file_type)
+static enum HPCS_ParseCode autodetect_file_type(FILE* datafile, enum HPCS_File_Type* file_type, const bool p_means_pressure)
 {
 	char* type_id;
 	enum HPCS_ParseCode pret;
@@ -202,6 +204,10 @@ static enum HPCS_ParseCode autodetect_file_type(FILE* datafile, enum HPCS_File_T
 			*file_type = HPCS_TYPE_CE_CURRENT;
 		else if (hpce_id == FILE_TYPE_HPCE_POWER)
 			*file_type = HPCS_TYPE_CE_POWER;
+		else if (hpce_id == FILE_TYPE_HPCE_POWER_PRESSURE)
+			*file_type = p_means_pressure ? HPCS_TYPE_CE_PRESSURE : HPCS_TYPE_CE_POWER;
+		else if (hpce_id == FILE_TYPE_HPCE_TEMPERATURE)
+			*file_type = HPCS_TYPE_CE_TEMPERATURE;
 		else if (hpce_id == FILE_TYPE_HPCE_VOLTAGE)
 			*file_type = HPCS_TYPE_CE_VOLTAGE;
 		else
@@ -221,6 +227,22 @@ static enum HPCS_DataCheckCode check_for_marker(const char* const segment, size_
 		return DCHECK_GOT_MARKER;
 	} else
 		return DCHECK_E_NO_MARKER;
+}
+
+static HPCS_step guess_current_step(struct HPCS_MeasuredData* const mdata)
+{
+	if (strcmp(mdata->cs_ver, CHEMSTAT_VER_B0625) == 0)
+		return CE_CURRENT_STEP;
+
+	return CE_WORK_PARAM_STEP;
+}
+
+static bool guess_p_meaning(struct HPCS_MeasuredData* const mdata)
+{
+	if (strcmp(mdata->cs_ver, CHEMSTAT_VER_B0625) == 0)
+		return false;
+
+	return true;
 }
 
 static enum HPCS_ParseCode read_dad_wavelength(FILE* datafile, struct HPCS_Wavelength* const measured, struct HPCS_Wavelength* const reference)
