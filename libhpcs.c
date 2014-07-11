@@ -238,11 +238,12 @@ static enum HPCS_ParseCode read_dad_wavelength(FILE* datafile, struct HPCS_Wavel
 		return pret;
 
 	/* Read MEASURED wavelength */
-	start_idx = strstr(str, WAVELENGTH_MEASURED_TEXT) + strlen(WAVELENGTH_MEASURED_TEXT);
+	start_idx = strstr(str, WAVELENGTH_MEASURED_TEXT);
 	if (start_idx == NULL) {
 		ret = PARSE_W_NO_DATA;
 		goto out;
 	}
+	start_idx += strlen(WAVELENGTH_MEASURED_TEXT);
 	interv_idx = strchr(start_idx, WAVELENGTH_DELIMITER_TEXT);
 	if (interv_idx == NULL) {
 		PR_DEBUG("No spectral interval value\n");
@@ -283,12 +284,13 @@ static enum HPCS_ParseCode read_dad_wavelength(FILE* datafile, struct HPCS_Wavel
 
 
 	/* Read REFERENCE wavelength */
-	start_idx = strstr(end_idx, WAVELENGTH_REFERENCE_TEXT) + strlen(WAVELENGTH_REFERENCE_TEXT);
+	start_idx = strstr(end_idx, WAVELENGTH_REFERENCE_TEXT);
 	if (start_idx == NULL) {
 		PR_DEBUG("No reference wavelength data\n");
 		ret = PARSE_W_NO_DATA;
 		goto out2;
 	}
+	start_idx += strlen(WAVELENGTH_REFERENCE_TEXT);
 	interv_idx = strchr(start_idx, WAVELENGTH_DELIMITER_TEXT);
 	if (interv_idx == NULL) {
 		/* Is the reference wavelength disabled? */
