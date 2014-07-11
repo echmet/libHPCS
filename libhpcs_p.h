@@ -26,12 +26,13 @@ typedef double HPCS_step;
 typedef size_t HPCS_segsize;
 
 
-/* Identifiers of file types found at offset 0x1075 */
-const char* FILE_TYPE_CE_CCD = "HPCE1L";
-const char* FILE_TYPE_CE_CURRENT = "HPCE1C";
-const char* FILE_TYPE_CE_DAD = "DAD";
-const char* FILE_TYPE_CE_VOLTAGE = "HPCE1V";
-const char* FILE_TYPE_CE_POWER = "HPCE1P";
+/* Identifiers of file types found at offset 0x1075 onward */
+const char* FILE_TYPE_ID_DAD = "DAD";
+const char* FILE_TYPE_ID_HPCE = "HPCE";
+const char FILE_TYPE_HPCE_CCD = 'L';
+const char FILE_TYPE_HPCE_CURRENT = 'C';
+const char FILE_TYPE_HPCE_VOLTAGE = 'V';
+const char FILE_TYPE_HPCE_POWER = 'P';
 
 /* Char and text values */
 const char* WAVELENGTH_MEASURED_TEXT = "Sig=";

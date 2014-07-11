@@ -184,42 +184,31 @@ out:
 
 static enum HPCS_ParseCode autodetect_file_type(FILE* datafile, enum HPCS_File_Type* file_type)
 {
-	char* type_str;
 	char* type_id;
-	char* delim;
-	size_t len;
 	enum HPCS_ParseCode pret;
 
-	pret = read_string_at_offset(datafile, DATA_OFFSET_DEVSIG_INFO, &type_str);
+	pret = read_string_at_offset(datafile, DATA_OFFSET_DEVSIG_INFO, &type_id);
 	if (pret != PARSE_OK)
 		return pret;
 
-	delim = strchr(type_str, DATA_FILE_COMMA);
-	if (delim == NULL) {
-		free(type_str);
-		return PARSE_E_NOT_FOUND;
-	}
-
-	len = delim - type_str;
-	type_id = malloc(len + 1);
-	memcpy(type_id, type_str, len);
-	type_id[len] = 0;
-
-	if (strcmp(FILE_TYPE_CE_CCD, type_id) == 0)
-		*file_type = HPCS_TYPE_CE_CCD;
-	else if (strcmp(FILE_TYPE_CE_CURRENT, type_id) == 0)
-		*file_type = HPCS_TYPE_CE_CURRENT;
-	else if (strstr(type_id, FILE_TYPE_CE_DAD) != NULL)
+	if (strstr(type_id, FILE_TYPE_ID_DAD) == type_id)
 		*file_type = HPCS_TYPE_CE_DAD;
-	else if (strcmp(FILE_TYPE_CE_POWER, type_id) == 0)
-		*file_type = HPCS_TYPE_CE_POWER;
-	else if (strcmp(FILE_TYPE_CE_VOLTAGE, type_id) == 0)
-		*file_type = HPCS_TYPE_CE_VOLTAGE;
-	else
-		*file_type = HPCS_TYPE_UNKNOWN;
+	else if (strstr(type_id, FILE_TYPE_ID_HPCE) == type_id) {
+		const char hpce_id = type_id[strlen(FILE_TYPE_ID_HPCE) + 1];
 
-	free(type_str);
-	free(type_id);
+		if (hpce_id == FILE_TYPE_HPCE_CCD)
+			*file_type = HPCS_TYPE_CE_CCD;
+		else if (hpce_id == FILE_TYPE_HPCE_CURRENT)
+			*file_type = HPCS_TYPE_CE_CURRENT;
+		else if (hpce_id == FILE_TYPE_HPCE_POWER)
+			*file_type = HPCS_TYPE_CE_POWER;
+		else if (hpce_id == FILE_TYPE_HPCE_VOLTAGE)
+			*file_type = HPCS_TYPE_CE_VOLTAGE;
+		else
+			*file_type = HPCS_TYPE_UNKNOWN;
+	} else
+		*file_type = HPCS_TYPE_UNKNOWN;	
+
 	return PARSE_OK;
 }
 
