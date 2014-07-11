@@ -459,6 +459,9 @@ static enum HPCS_ParseCode read_fixed_signal(FILE* datafile, struct HPCS_TVPair*
 	char raw[2];
 	size_t r;
 	enum HPCS_DataCheckCode dret;
+#ifndef NDEBUG
+	size_t bytes_read = 0;
+#endif
 
 	fseek(datafile, DATA_OFFSET_DATA_START, SEEK_SET);
 	if (feof(datafile))
@@ -502,6 +505,9 @@ static enum HPCS_ParseCode read_fixed_signal(FILE* datafile, struct HPCS_TVPair*
 			return PARSE_E_CANT_READ;
 		}
 		segments_read++;
+#ifndef NDEBUG
+		bytes_read += SEGMENT_SIZE;
+#endif
 
 		if (alloc_size == data_segments_read) {
 			struct HPCS_TVPair* nptr;
@@ -522,12 +528,13 @@ static enum HPCS_ParseCode read_fixed_signal(FILE* datafile, struct HPCS_TVPair*
 			dret = check_for_marker(raw, &next_marker_idx);
 			switch (dret) {
 			case DCHECK_GOT_MARKER:
+				PR_DEBUGF("Got marker at: 0x%lx\n", bytes_read + DATA_OFFSET_DATA_START);
 				break;
 			case DCHECK_EOF:
 				read_file = false;
 				break;
 			default:
-				PR_DEBUGF("%s %lu\n", "Marker was expected but it was not found at:", segments_read);
+				PR_DEBUGF("Marker was expected but it was not found at: 0x%lx\n", bytes_read + DATA_OFFSET_DATA_START);
 				free(*pairs);
 				*pairs = NULL;
 				return PARSE_E_NOT_FOUND;
