@@ -154,19 +154,19 @@ enum HPCS_RetCode hpcs_read_file(const char* filename, struct HPCS_MeasuredData*
 
 	switch (mdata->file_type) {
 	case HPCS_TYPE_CE_CCD:
-		pret = read_floating_signal(datafile, &mdata->data, &mdata->data_count, CE_CCD_STEP, mdata->sampling_rate);
+		pret = read_signal(datafile, &mdata->data, &mdata->data_count, CE_CCD_STEP, mdata->sampling_rate, SIGTYPE_FLOATING);
 		break;
 	case HPCS_TYPE_CE_CURRENT:
-		pret = read_fixed_signal(datafile, &mdata->data, &mdata->data_count, guess_current_step(mdata), mdata->sampling_rate);
+		pret = read_signal(datafile, &mdata->data, &mdata->data_count, guess_current_step(mdata), mdata->sampling_rate, SIGTYPE_FIXED);
 		break;
 	case HPCS_TYPE_CE_DAD:
-		pret = read_fixed_signal(datafile, &mdata->data, &mdata->data_count, CE_DAD_STEP, mdata->sampling_rate);
+		pret = read_signal(datafile, &mdata->data, &mdata->data_count, CE_DAD_STEP, mdata->sampling_rate, SIGTYPE_FIXED);
 		break;
 	case HPCS_TYPE_CE_POWER:
 	case HPCS_TYPE_CE_PRESSURE:
 	case HPCS_TYPE_CE_TEMPERATURE:
 	case HPCS_TYPE_CE_VOLTAGE:
-		pret = read_fixed_signal(datafile, &mdata->data, &mdata->data_count, CE_WORK_PARAM_STEP, mdata->sampling_rate);
+		pret = read_signal(datafile, &mdata->data, &mdata->data_count, CE_WORK_PARAM_STEP, mdata->sampling_rate, SIGTYPE_FIXED);
 		break;
 	case HPCS_TYPE_UNKNOWN:
 		ret = HPCS_E_UNKNOWN_TYPE;
@@ -220,13 +220,11 @@ static enum HPCS_ParseCode autodetect_file_type(FILE* datafile, enum HPCS_File_T
 
 static enum HPCS_DataCheckCode check_for_marker(const char* const segment, size_t* const next_marker_idx)
 {
-	if (segment[0] == BIN_MARKER_END && segment[1] == BIN_MARKER_END)
-		return DCHECK_EOF;
-	else if (segment[0] == BIN_MARKER_A && segment[1] != BIN_MARKER_END) {
+	if (segment[0] == BIN_MARKER_A && segment[1] != BIN_MARKER_END) {
 		*next_marker_idx += (uint8_t)segment[1] + 1;
 		return DCHECK_GOT_MARKER;
 	} else
-		return DCHECK_E_NO_MARKER;
+		return DCHECK_NO_MARKER;
 }
 
 static HPCS_step guess_current_step(struct HPCS_MeasuredData* const mdata)
@@ -458,117 +456,8 @@ static uint8_t month_to_number(const char* const month)
 		return 0;
 }
 
-static enum HPCS_ParseCode read_fixed_signal(FILE* datafile, struct HPCS_TVPair** pairs, size_t* pairs_count,
-					   const HPCS_step step, const double sampling_rate)
-{
-	const double time_step = 1 / (60 * sampling_rate);
-	size_t alloc_size = 60 * sampling_rate;
-	bool read_file = true;
-	double value = 0;
-	double time = 0;
-	size_t segments_read = 0;
-	size_t data_segments_read = 0;
-	size_t next_marker_idx = 0;
-	char raw[2];
-	size_t r;
-	enum HPCS_DataCheckCode dret;
-#ifndef NDEBUG
-	size_t bytes_read = 0;
-#endif
-
-	fseek(datafile, DATA_OFFSET_DATA_START, SEEK_SET);
-	if (feof(datafile))
-		return PARSE_E_OUT_OF_RANGE;
-
-	/* Data block must begin with a marker, read it */
-	r = fread(raw, SEGMENT_SIZE, 1, datafile);
-	if (r != 1)
-		return PARSE_E_CANT_READ;
-	segments_read++;
-
-	dret = check_for_marker(raw, &next_marker_idx);
-	switch (dret) {
-	case DCHECK_EOF:
-	case DCHECK_E_NO_MARKER:
-		PR_DEBUG("First segment is not a marker\n");
-		return PARSE_E_NOT_FOUND; /* First segment is not a marker */
-	default:
-		break;
-	}
-
-	*pairs = malloc(sizeof(struct HPCS_TVPair) * alloc_size);
-	if (pairs == NULL)
-		return PARSE_E_NO_MEM;
-
-	while (read_file) {
-		if (ferror(datafile)) {
-			PR_DEBUG("Cannot read stream\n");
-			free(*pairs);
-			*pairs = NULL;
-			return PARSE_E_CANT_READ;
-		}
-		if (feof(datafile))
-			break;
-
-		r = fread(raw, SEGMENT_SIZE, 1, datafile);
-		if (r != 1) {
-			PR_DEBUG("Cannot read segment\n");
-			free(*pairs);
-			*pairs = NULL;
-			return PARSE_E_CANT_READ;
-		}
-		segments_read++;
-#ifndef NDEBUG
-		bytes_read += SEGMENT_SIZE;
-#endif
-
-		if (alloc_size == data_segments_read) {
-			struct HPCS_TVPair* nptr;
-			alloc_size += 60 * sampling_rate;
-			nptr = realloc(*pairs, sizeof(struct HPCS_TVPair) * alloc_size);
-
-			if (nptr == NULL) {
-				PR_DEBUG("No memory to store data\n");
-				free(*pairs);
-				*pairs = NULL;
-				return PARSE_E_NO_MEM;
-			}
-
-			*pairs = nptr;
-		}
-
-		if (segments_read - 1 == next_marker_idx) {
-			dret = check_for_marker(raw, &next_marker_idx);
-			switch (dret) {
-			case DCHECK_GOT_MARKER:
-				PR_DEBUGF("Got marker at: 0x%lx\n", bytes_read + DATA_OFFSET_DATA_START);
-				break;
-			case DCHECK_EOF:
-				read_file = false;
-				break;
-			default:
-				PR_DEBUGF("Marker was expected but it was not found at: 0x%lx\n", bytes_read + DATA_OFFSET_DATA_START);
-				free(*pairs);
-				*pairs = NULL;
-				return PARSE_E_NOT_FOUND;
-			}
-		} else {
-			be_to_cpu(raw);
-			value += (*(int16_t*)(raw)) * step;
-
-			(*pairs)[data_segments_read].time = time;
-			(*pairs)[data_segments_read].value = value;
-			data_segments_read++;
-			time += time_step;
-		}
-	}
-
-	*pairs_count = data_segments_read;
-	return PARSE_OK;
-}
-
-static enum HPCS_ParseCode read_floating_signal(FILE* datafile, struct HPCS_TVPair** pairs, size_t* pairs_count,
-					      const HPCS_step step, const double sampling_rate)
+static enum HPCS_ParseCode read_signal(FILE* datafile, struct HPCS_TVPair** pairs, size_t* pairs_count,
+				       const HPCS_step step, const double sampling_rate, const enum HPCS_SignalType sigtype)
 {
 	const double time_step = 1 / (60 * sampling_rate);
 	size_t alloc_size = 60 * sampling_rate;
@@ -594,7 +483,7 @@ static enum HPCS_ParseCode read_floating_signal(FILE* datafile, struct HPCS_TVPa
 	dret = check_for_marker(raw, &next_marker_idx);
 	switch (dret) {
 	case DCHECK_EOF:
-	case DCHECK_E_NO_MARKER:
+	case DCHECK_NO_MARKER:
 		return PARSE_E_NOT_FOUND;
 	default:
 		break;
@@ -605,18 +494,21 @@ static enum HPCS_ParseCode read_floating_signal(FILE* datafile, struct HPCS_TVPa
 		return PARSE_E_NO_MEM;
 
 	while (read_file) {
+		r = fread(raw, SEGMENT_SIZE, 1, datafile);
+
 		if (ferror(datafile)) {
 			free(*pairs);
 			*pairs = NULL;
+			PR_DEBUG("Error reading stream - ferror\n");
 			return PARSE_E_CANT_READ;
 		}
 		if (feof(datafile))
 			break;
 
-		r = fread(raw, SEGMENT_SIZE, 1, datafile);
 		if (r != 1) {
 			free(*pairs);
 			*pairs = NULL;
+			PR_DEBUGF("Error reading stream, r=%lu\n", r);
 			return PARSE_E_CANT_READ;
 		}
 		segments_read++;
@@ -637,47 +529,49 @@ static enum HPCS_ParseCode read_floating_signal(FILE* datafile, struct HPCS_TVPa
 		}
 
 		/* Check for markers */
-		if (segments_read - 1 == next_marker_idx) {
-			dret = check_for_marker(raw, &next_marker_idx);
-			switch (dret) {
-			case DCHECK_GOT_MARKER:
-				break;
-			case DCHECK_EOF:
-				read_file = false;
-				break;
-			default:
-				free(*pairs);
-				*pairs = NULL;
-				return PARSE_E_NOT_FOUND;
-			}
-		} else {
-			/* Check for a sudden jump of value */
-			if (raw[0] == BIN_MARKER_JUMP && raw[1] == BIN_MARKER_END) {
-				char lraw[4];
-				int32_t _v;
+		dret = check_for_marker(raw, &next_marker_idx);
+		switch (dret) {
+		case DCHECK_GOT_MARKER:
+			PR_DEBUGF("Got marker at 0x%lx\n", segments_read - 1);
+			continue;
+		case DCHECK_NO_MARKER:
+			if (sigtype == SIGTYPE_FLOATING) {
+				/* Check for a sudden jump of value */
+				if (raw[0] == BIN_MARKER_JUMP && raw[1] == BIN_MARKER_END) {
+					char lraw[4];
+					int32_t _v;
 
-				fread(lraw, LARGE_SEGMENT_SIZE, 1, datafile);
-				if (feof(datafile) || ferror(datafile)) {
-					free(*pairs);
-					*pairs = NULL;
-					return PARSE_E_CANT_READ;
+					PR_DEBUGF("Value has jumped at 0x%lx\n", segments_read);
+					fread(lraw, LARGE_SEGMENT_SIZE, 1, datafile);
+					if (feof(datafile) || ferror(datafile)) {
+						free(*pairs);
+						*pairs = NULL;
+						return PARSE_E_CANT_READ;
+					}
+
+					be_to_cpu(lraw);
+					_v = *(int32_t*)lraw;
+					value = _v * step;
+					goto write_value;
 				}
-
-				be_to_cpu(lraw);
-				_v = *(int32_t*)lraw;
-				value = _v * step;
-			} else {
-				int16_t _v;
-
-				be_to_cpu(raw);
-				_v = *(int16_t*)raw;
-				value += _v * step;
 			}
+			int16_t _v;
 
+			be_to_cpu(raw);
+			_v = *(int16_t*)raw;
+			value += _v * step;
+
+write_value:
 			(*pairs)[data_segments_read].time = time;
 			(*pairs)[data_segments_read].value = value;
 			data_segments_read++;
 			time += time_step;
+			break;
+		default:
+			PR_DEBUG("Invalid value from check_for_marker()\n");
+			free(*pairs);
+			*pairs = NULL;
+			return PARSE_E_CANT_READ;
 		}
 	}
 

@@ -4,7 +4,7 @@
 enum HPCS_DataCheckCode {
 	DCHECK_GOT_MARKER,
 	DCHECK_EOF,
-	DCHECK_E_NO_MARKER
+	DCHECK_NO_MARKER
 };
 
 enum HPCS_ParseCode {
@@ -15,6 +15,11 @@ enum HPCS_ParseCode {
 	PARSE_E_NOT_FOUND,
 	PARSE_E_INV_PARAM,
 	PARSE_W_NO_DATA
+};
+
+enum HPCS_SignalType {
+	SIGTYPE_FIXED,
+	SIGTYPE_FLOATING
 };
 
 enum HPCS_Wavelength_Type {
@@ -104,10 +109,8 @@ static bool guess_p_meaning(struct HPCS_MeasuredData* const mdata);
 static enum HPCS_ParseCode read_dad_wavelength(FILE* datafile, struct HPCS_Wavelength* const measured, struct HPCS_Wavelength* const reference);
 static uint8_t month_to_number(const char* const month);
 static enum HPCS_ParseCode read_date(FILE* datafile, struct HPCS_Date* const date);
-static enum HPCS_ParseCode read_fixed_signal(FILE* datafile, struct HPCS_TVPair** pairs, size_t* pairs_count,
-					   const HPCS_step step, const double sampling_rate);
-static enum HPCS_ParseCode read_floating_signal(FILE* datafile, struct HPCS_TVPair** pairs, size_t* pairs_count,
-					      const HPCS_step step, const double sampling_rate);
+static enum HPCS_ParseCode read_signal(FILE* datafile, struct HPCS_TVPair** pairs, size_t* pairs_count,
+				       const HPCS_step step, const double sampling_rate, const enum HPCS_SignalType sigtype);
 static enum HPCS_ParseCode read_sampling_rate(FILE* datafile, double* sampling_rate);
 static enum HPCS_ParseCode read_string_at_offset(FILE* datafile, const HPCS_offset, char** const result);
 
@@ -138,6 +141,6 @@ void reverse_endianness(char* bytes, size_t sz) {
  #define PR_DEBUGF(fmt, ...) fprintf(stderr, "[%s()] "fmt, __func__, __VA_ARGS__)
  #define PR_DEBUG(msg) fprintf(stderr, "[%s()] "msg, __func__)
 #else
- #define PR_DEBUGF(fmt, msg)
- #define PR_DEBUG(msg)
+ #define PR_DEBUGF(fmt, msg) ((void)0)
+ #define PR_DEBUG(msg) ((void)0)
 #endif
