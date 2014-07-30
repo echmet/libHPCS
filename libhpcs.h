@@ -5,6 +5,14 @@ extern "C" {
 #include <stddef.h>
 #include <stdint.h>
 
+#ifdef __WIN32__
+#define LIBHPCS_API __declspec(dllexport)
+#define LIBHPCS_CC __cdecl
+#else
+#define LIBHPCS_API
+#define LIBHPCS_CC
+#endif
+
 enum HPCS_File_Type {
 	HPCS_TYPE_CE_CCD,
 	HPCS_TYPE_CE_CURRENT,
@@ -60,17 +68,10 @@ struct HPCS_MeasuredData {
 	size_t data_count;
 };
 
-#ifdef __WIN32__
-__declspec(dllexport) struct HPCS_MeasuredData* __cdecl hpcs_alloc();
-__declspec(dllexport) void __cdecl hpcs_free(struct HPCS_MeasuredData* const mdata);
-__declspec(dllexport) char* __cdecl hpcs_error_to_string(const enum HPCS_RetCode);
-__declspec(dllexport) enum HPCS_RetCode __cdecl hpcs_read_file(const char* const filename, struct HPCS_MeasuredData* mdata);
-#else
-struct HPCS_MeasuredData* hpcs_alloc();
-void hpcs_free(struct HPCS_MeasuredData* const mdata);
-char* hpcs_error_to_string(const enum HPCS_RetCode);
-enum HPCS_RetCode hpcs_read_file(const char* const filename, struct HPCS_MeasuredData* mdata);
-#endif
+LIBHPCS_API struct HPCS_MeasuredData* LIBHPCS_CC hpcs_alloc();
+LIBHPCS_API void LIBHPCS_CC hpcs_free(struct HPCS_MeasuredData* const mdata);
+LIBHPCS_API char* LIBHPCS_CC hpcs_error_to_string(const enum HPCS_RetCode);
+LIBHPCS_API enum HPCS_RetCode LIBHPCS_CC hpcs_read_file(const char* const filename, struct HPCS_MeasuredData* mdata);
 
 #ifdef __cplusplus
 }
