@@ -58,7 +58,12 @@ const char* MON_DEC_STR = "Dec";
 const HPCS_step CE_CURRENT_STEP = 0.01;
 const HPCS_step CE_CCD_STEP = 0.0000596046450027643;
 const HPCS_step CE_DAD_STEP = 0.000476837158203;
+const HPCS_step CE_ENERGY_STEP = 0.0000055555555;
 const HPCS_step CE_WORK_PARAM_STEP = 0.001;
+const HPCS_step CE_WORK_PARAM_OLD_STEP = 0.000083333333;
+
+/* Hardcoded sampling rates */
+const double CE_WORK_PARAM_SAMPRATE = 1.67;
 
 /* Offsets containing data of interest in .ch files */
 const HPCS_offset DATA_OFFSET_FILE_DESC = 0x15B;
@@ -95,13 +100,14 @@ const char* HPCS_E__UNKNOWN_EC_STR = "Unknown error code.";
 static enum HPCS_ParseCode autodetect_file_type(FILE* datafile, enum HPCS_FileType* file_type, const bool p_means_pressure);
 static enum HPCS_DataCheckCode check_for_marker(const char* const segment, size_t* const next_marker_idx);
 static HPCS_step guess_current_step(const struct HPCS_MeasuredData* mdata);
+static HPCS_step guess_elec_sigstep(const struct HPCS_MeasuredData *mdata);
 static bool guess_p_meaning(const struct HPCS_MeasuredData* mdata);
 static void guess_sampling_rate(struct HPCS_MeasuredData* mdata);
 static enum HPCS_ParseCode read_dad_wavelength(FILE* datafile, struct HPCS_Wavelength* const measured, struct HPCS_Wavelength* const reference);
 static uint8_t month_to_number(const char* const month);
 static enum HPCS_ParseCode read_date(FILE* datafile, struct HPCS_Date* const date);
 static enum HPCS_ParseCode read_signal(FILE* datafile, struct HPCS_TVPair** pairs, size_t* pairs_count,
-				       const HPCS_step step, const double sampling_rate, const enum HPCS_SignalType sigtype);
+				       const HPCS_step step, const double sampling_rate);
 static enum HPCS_ParseCode read_sampling_rate(FILE* datafile, double* sampling_rate);
 static enum HPCS_ParseCode read_string_at_offset(FILE* datafile, const HPCS_offset, char** const result);
 

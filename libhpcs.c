@@ -156,19 +156,21 @@ enum HPCS_RetCode hpcs_read_file(const char* filename, struct HPCS_MeasuredData*
 
 	switch (mdata->file_type) {
 	case HPCS_TYPE_CE_CCD:
-		pret = read_signal(datafile, &mdata->data, &mdata->data_count, CE_CCD_STEP, mdata->sampling_rate, SIGTYPE_FLOATING);
+		pret = read_signal(datafile, &mdata->data, &mdata->data_count, CE_CCD_STEP, mdata->sampling_rate);
 		break;
 	case HPCS_TYPE_CE_CURRENT:
-		pret = read_signal(datafile, &mdata->data, &mdata->data_count, guess_current_step(mdata), mdata->sampling_rate, SIGTYPE_FIXED);
+		pret = read_signal(datafile, &mdata->data, &mdata->data_count, guess_current_step(mdata), mdata->sampling_rate);
 		break;
 	case HPCS_TYPE_CE_DAD:
-		pret = read_signal(datafile, &mdata->data, &mdata->data_count, CE_DAD_STEP, mdata->sampling_rate, SIGTYPE_FIXED);
+		pret = read_signal(datafile, &mdata->data, &mdata->data_count, CE_DAD_STEP, mdata->sampling_rate);
 		break;
 	case HPCS_TYPE_CE_POWER:
+	case HPCS_TYPE_CE_VOLTAGE:
+		pret = read_signal(datafile, &mdata->data, &mdata->data_count, guess_elec_sigstep(mdata), mdata->sampling_rate);
+		break;
 	case HPCS_TYPE_CE_PRESSURE:
 	case HPCS_TYPE_CE_TEMPERATURE:
-	case HPCS_TYPE_CE_VOLTAGE:
-		pret = read_signal(datafile, &mdata->data, &mdata->data_count, CE_WORK_PARAM_STEP, mdata->sampling_rate, SIGTYPE_FIXED);
+		pret = read_signal(datafile, &mdata->data, &mdata->data_count, CE_WORK_PARAM_STEP, mdata->sampling_rate);
 		break;
 	case HPCS_TYPE_UNKNOWN:
 		ret = HPCS_E_UNKNOWN_TYPE;
@@ -237,6 +239,22 @@ static HPCS_step guess_current_step(const struct HPCS_MeasuredData* mdata)
 	return CE_WORK_PARAM_STEP;
 }
 
+static HPCS_step guess_elec_sigstep(const struct HPCS_MeasuredData* mdata)
+{
+	if (strcmp(mdata->cs_ver, CHEMSTAT_VER_B0625)) {
+		switch (mdata->file_type) {
+		case HPCS_TYPE_CE_POWER:
+			return CE_ENERGY_STEP;
+		default:
+			return CE_WORK_PARAM_OLD_STEP;
+		}
+	}
+
+
+
+	return CE_WORK_PARAM_STEP;
+}
+
 static bool guess_p_meaning(const struct HPCS_MeasuredData* mdata)
 {
 	if (strcmp(mdata->cs_ver, CHEMSTAT_VER_B0625) == 0)
@@ -253,7 +271,7 @@ static void guess_sampling_rate(struct HPCS_MeasuredData* mdata)
 			mdata->sampling_rate *= 10;
 			break;
 		default:
-			mdata->sampling_rate = 1.67;
+			mdata->sampling_rate = CE_WORK_PARAM_SAMPRATE;
 		}
 	}
 }
@@ -472,7 +490,7 @@ static uint8_t month_to_number(const char* const month)
 }
 
 static enum HPCS_ParseCode read_signal(FILE* datafile, struct HPCS_TVPair** pairs, size_t* pairs_count,
-				       const HPCS_step step, const double sampling_rate, const enum HPCS_SignalType sigtype)
+				       const HPCS_step step, const double sampling_rate)
 {
 	const double time_step = 1 / (60 * sampling_rate);
 	size_t alloc_size = 60 * sampling_rate;
@@ -550,33 +568,30 @@ static enum HPCS_ParseCode read_signal(FILE* datafile, struct HPCS_TVPair** pair
 			PR_DEBUGF("Got marker at 0x%lx\n", segments_read - 1);
 			continue;
 		case DCHECK_NO_MARKER:
-			if (sigtype == SIGTYPE_FLOATING) {
-				/* Check for a sudden jump of value */
-				if (raw[0] == BIN_MARKER_JUMP && raw[1] == BIN_MARKER_END) {
-					char lraw[4];
-					int32_t _v;
+			/* Check for a sudden jump of value */
+			if (raw[0] == BIN_MARKER_JUMP && raw[1] == BIN_MARKER_END) {
+				char lraw[4];
+				int32_t _v;
 
-					PR_DEBUGF("Value has jumped at 0x%lx\n", segments_read);
-					fread(lraw, LARGE_SEGMENT_SIZE, 1, datafile);
-					if (feof(datafile) || ferror(datafile)) {
-						free(*pairs);
-						*pairs = NULL;
-						return PARSE_E_CANT_READ;
-					}
-
-					be_to_cpu(lraw);
-					_v = *(int32_t*)lraw;
-					value = _v * step;
-					goto write_value;
+				PR_DEBUGF("Value has jumped at 0x%lx\n", segments_read);
+				fread(lraw, LARGE_SEGMENT_SIZE, 1, datafile);
+				if (feof(datafile) || ferror(datafile)) {
+					free(*pairs);
+					*pairs = NULL;
+					return PARSE_E_CANT_READ;
 				}
+
+				be_to_cpu(lraw);
+				_v = *(int32_t*)lraw;
+				value = _v * step;
+			} else {
+				int16_t _v;
+
+				be_to_cpu(raw);
+				_v = *(int16_t*)raw;
+				value += _v * step;
 			}
-			int16_t _v;
 
-			be_to_cpu(raw);
-			_v = *(int16_t*)raw;
-			value += _v * step;
-
-write_value:
 			(*pairs)[data_segments_read].time = time;
 			(*pairs)[data_segments_read].value = value;
 			data_segments_read++;

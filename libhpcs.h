@@ -32,11 +32,6 @@ enum HPCS_RetCode {
 	HPCS_E_UNKNOWN_TYPE
 };
 
-enum HPCS_SignalType {
-  SIGTYPE_FIXED,
-  SIGTYPE_FLOATING
-};
-
 struct HPCS_Date {
 	uint32_t year;
 	uint8_t month;
