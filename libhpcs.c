@@ -152,6 +152,8 @@ enum HPCS_RetCode hpcs_read_file(const char* filename, struct HPCS_MeasuredData*
 		}
 	}
 
+	guess_sampling_rate(mdata);
+
 	switch (mdata->file_type) {
 	case HPCS_TYPE_CE_CCD:
 		pret = read_signal(datafile, &mdata->data, &mdata->data_count, CE_CCD_STEP, mdata->sampling_rate, SIGTYPE_FLOATING);
@@ -184,7 +186,7 @@ out:
 	return ret;
 }
 
-static enum HPCS_ParseCode autodetect_file_type(FILE* datafile, enum HPCS_File_Type* file_type, const bool p_means_pressure)
+static enum HPCS_ParseCode autodetect_file_type(FILE* datafile, enum HPCS_FileType* file_type, const bool p_means_pressure)
 {
 	char* type_id;
 	enum HPCS_ParseCode pret;
@@ -227,7 +229,7 @@ static enum HPCS_DataCheckCode check_for_marker(const char* const segment, size_
 		return DCHECK_NO_MARKER;
 }
 
-static HPCS_step guess_current_step(struct HPCS_MeasuredData* const mdata)
+static HPCS_step guess_current_step(const struct HPCS_MeasuredData* mdata)
 {
 	if (strcmp(mdata->cs_ver, CHEMSTAT_VER_B0625) == 0)
 		return CE_CURRENT_STEP;
@@ -235,12 +237,25 @@ static HPCS_step guess_current_step(struct HPCS_MeasuredData* const mdata)
 	return CE_WORK_PARAM_STEP;
 }
 
-static bool guess_p_meaning(struct HPCS_MeasuredData* const mdata)
+static bool guess_p_meaning(const struct HPCS_MeasuredData* mdata)
 {
 	if (strcmp(mdata->cs_ver, CHEMSTAT_VER_B0625) == 0)
 		return false;
 
 	return true;
+}
+
+static void guess_sampling_rate(struct HPCS_MeasuredData* mdata)
+{
+	if (strcmp(mdata->cs_ver, CHEMSTAT_VER_B0625)) {
+		switch (mdata->file_type) {
+		case HPCS_TYPE_CE_DAD:
+			mdata->sampling_rate *= 10;
+			break;
+		default:
+			mdata->sampling_rate = 1.67;
+		}
+	}
 }
 
 static enum HPCS_ParseCode read_dad_wavelength(FILE* datafile, struct HPCS_Wavelength* const measured, struct HPCS_Wavelength* const reference)

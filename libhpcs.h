@@ -13,7 +13,7 @@ extern "C" {
 #define LIBHPCS_CC
 #endif
 
-enum HPCS_File_Type {
+enum HPCS_FileType {
 	HPCS_TYPE_CE_CCD,
 	HPCS_TYPE_CE_CURRENT,
 	HPCS_TYPE_CE_DAD,
@@ -30,6 +30,11 @@ enum HPCS_RetCode {
 	HPCS_E_CANT_OPEN,
 	HPCS_E_PARSE_ERROR,
 	HPCS_E_UNKNOWN_TYPE
+};
+
+enum HPCS_SignalType {
+  SIGTYPE_FIXED,
+  SIGTYPE_FLOATING
 };
 
 struct HPCS_Date {
@@ -63,7 +68,7 @@ struct HPCS_MeasuredData {
 	double sampling_rate;
 	struct HPCS_Wavelength dad_wavelength_msr;
 	struct HPCS_Wavelength dad_wavelength_ref;
-	enum HPCS_File_Type file_type;
+	enum HPCS_FileType file_type;
 	struct HPCS_TVPair* data;
 	size_t data_count;
 };

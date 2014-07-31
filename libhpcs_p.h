@@ -17,12 +17,7 @@ enum HPCS_ParseCode {
 	PARSE_W_NO_DATA
 };
 
-enum HPCS_SignalType {
-	SIGTYPE_FIXED,
-	SIGTYPE_FLOATING
-};
-
-enum HPCS_Wavelength_Type {
+enum HPCS_WavelengthType {
 	WAVELENGTH_MEASURED,
 	WAVELENGTH_REFERENCE
 };
@@ -102,10 +97,11 @@ const char* HPCS_E_PARSE_ERROR_STR = "Cannot parse the specified file, it might 
 const char* HPCS_E_UNKNOWN_TYPE_STR = "The specified file contains an unknown type of measurement.";
 const char* HPCS_E__UNKNOWN_EC_STR = "Unknown error code.";
 
-static enum HPCS_ParseCode autodetect_file_type(FILE* datafile, enum HPCS_File_Type* file_type, const bool p_means_pressure);
+static enum HPCS_ParseCode autodetect_file_type(FILE* datafile, enum HPCS_FileType* file_type, const bool p_means_pressure);
 static enum HPCS_DataCheckCode check_for_marker(const char* const segment, size_t* const next_marker_idx);
-static HPCS_step guess_current_step(struct HPCS_MeasuredData* const mdata);
-static bool guess_p_meaning(struct HPCS_MeasuredData* const mdata);
+static HPCS_step guess_current_step(const struct HPCS_MeasuredData* mdata);
+static bool guess_p_meaning(const struct HPCS_MeasuredData* mdata);
+static void guess_sampling_rate(struct HPCS_MeasuredData* mdata);
 static enum HPCS_ParseCode read_dad_wavelength(FILE* datafile, struct HPCS_Wavelength* const measured, struct HPCS_Wavelength* const reference);
 static uint8_t month_to_number(const char* const month);
 static enum HPCS_ParseCode read_date(FILE* datafile, struct HPCS_Date* const date);
