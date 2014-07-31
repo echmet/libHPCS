@@ -17,11 +17,6 @@ enum HPCS_ParseCode {
 	PARSE_W_NO_DATA
 };
 
-enum HPCS_WavelengthType {
-	WAVELENGTH_MEASURED,
-	WAVELENGTH_REFERENCE
-};
-
 typedef size_t HPCS_offset;
 typedef double HPCS_step;
 typedef size_t HPCS_segsize;
