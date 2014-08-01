@@ -376,7 +376,6 @@ static enum HPCS_ParseCode read_dad_wavelength(FILE* datafile, struct HPCS_Wavel
 	ret = PARSE_OK;
 
 out2:
-	printf("%u %u %u %u\n", measured->wavelength, measured->interval, reference->wavelength, reference->interval);
 	free(temp);
 out:
 	free(str);
