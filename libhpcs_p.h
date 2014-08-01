@@ -1,11 +1,14 @@
-#ifdef _MSC_VER
-typedef int uint8_t
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#if defined(_MSC_VER)
+typedef int bool;
 #define true 1
 #define false 0
 #else
 #include <stdbool.h>
 #endif
-
 #include <stdio.h>
 
 enum HPCS_DataCheckCode {
@@ -105,14 +108,14 @@ const char* HPCS_E_UNKNOWN_TYPE_STR = "The specified file contains an unknown ty
 const char* HPCS_E__UNKNOWN_EC_STR = "Unknown error code.";
 
 static enum HPCS_ParseCode autodetect_file_type(FILE* datafile, enum HPCS_FileType* file_type, const bool p_means_pressure);
-static enum HPCS_DataCheckCode check_for_marker(const char* const segment, size_t* const next_marker_idx);
+static enum HPCS_DataCheckCode check_for_marker(const char* segment, size_t* const next_marker_idx);
 static HPCS_step guess_current_step(const struct HPCS_MeasuredData* mdata);
 static HPCS_step guess_elec_sigstep(const struct HPCS_MeasuredData *mdata);
 static bool guess_p_meaning(const struct HPCS_MeasuredData* mdata);
 static void guess_sampling_rate(struct HPCS_MeasuredData* mdata);
 static enum HPCS_ParseCode read_dad_wavelength(FILE* datafile, struct HPCS_Wavelength* const measured, struct HPCS_Wavelength* const reference);
-static uint8_t month_to_number(const char* const month);
-static enum HPCS_ParseCode read_date(FILE* datafile, struct HPCS_Date* const date);
+static uint8_t month_to_number(const char* month);
+static enum HPCS_ParseCode read_date(FILE* datafile, struct HPCS_Date* date);
 static enum HPCS_ParseCode read_signal(FILE* datafile, struct HPCS_TVPair** pairs, size_t* pairs_count,
 				       const HPCS_step step, const double sampling_rate);
 static enum HPCS_ParseCode read_sampling_rate(FILE* datafile, double* sampling_rate);
@@ -147,4 +150,8 @@ void reverse_endianness(char* bytes, size_t sz) {
 #else
  #define PR_DEBUGF(fmt, msg) ((void)0)
  #define PR_DEBUG(msg) ((void)0)
+#endif
+
+#ifdef __cplusplus
+}
 #endif

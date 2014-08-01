@@ -71,7 +71,7 @@ struct HPCS_MeasuredData {
 LIBHPCS_API struct HPCS_MeasuredData* LIBHPCS_CC hpcs_alloc();
 LIBHPCS_API void LIBHPCS_CC hpcs_free(struct HPCS_MeasuredData* const mdata);
 LIBHPCS_API char* LIBHPCS_CC hpcs_error_to_string(const enum HPCS_RetCode);
-LIBHPCS_API enum HPCS_RetCode LIBHPCS_CC hpcs_read_file(const char* const filename, struct HPCS_MeasuredData* mdata);
+LIBHPCS_API enum HPCS_RetCode LIBHPCS_CC hpcs_read_file(const char* filename, struct HPCS_MeasuredData* mdata);
 
 #ifdef __cplusplus
 }

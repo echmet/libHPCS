@@ -1,6 +1,10 @@
 #include "libhpcs.h"
 #include "libhpcs_p.h"
-#include <stdbool.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdlib.h>
 #include <string.h>
 
@@ -71,7 +75,7 @@ void hpcs_free(struct HPCS_MeasuredData* const mdata)
 
 enum HPCS_RetCode hpcs_read_file(const char* filename, struct HPCS_MeasuredData* mdata)
 {
-	FILE* datafile;
+        FILE* datafile;
 	enum HPCS_ParseCode pret;
 	enum HPCS_RetCode ret;
 
@@ -459,7 +463,7 @@ static enum HPCS_ParseCode read_date(FILE* datafile, struct HPCS_Date* date)
 	return PARSE_OK;
 }
 
-static uint8_t month_to_number(const char* const month)
+static uint8_t month_to_number(const char* month)
 {
 	if (strcmp(MON_JAN_STR, month) == 0)
 		return 1;
@@ -493,7 +497,7 @@ static enum HPCS_ParseCode read_signal(FILE* datafile, struct HPCS_TVPair** pair
 				       const HPCS_step step, const double sampling_rate)
 {
 	const double time_step = 1 / (60 * sampling_rate);
-	size_t alloc_size = 60 * sampling_rate;
+        size_t alloc_size = (size_t)((60 * sampling_rate) + 0.5);
 	bool read_file = true;
 	double value = 0;
 	double time = 0;
@@ -549,7 +553,7 @@ static enum HPCS_ParseCode read_signal(FILE* datafile, struct HPCS_TVPair** pair
 		/* Expand storage if there is more data than we can store */
 		if (alloc_size == data_segments_read) {
 			struct HPCS_TVPair* nptr;
-			alloc_size += 60 * sampling_rate;
+                        alloc_size += (size_t)((60 * sampling_rate) + 0.5);
 			nptr = realloc(*pairs, sizeof(struct HPCS_TVPair) * alloc_size);
 
 			if (nptr == NULL) {
@@ -657,3 +661,7 @@ static enum HPCS_ParseCode read_string_at_offset(FILE* datafile, const HPCS_offs
 	*result = string;
 	return PARSE_OK;
 }
+
+#ifdef __cplusplus
+}
+#endif
