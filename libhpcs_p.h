@@ -1,3 +1,8 @@
+#ifdef WIN32
+typedef int uint8_t
+#define true 1
+#define false 0
+#endif
 #include <stdbool.h>
 #include <stdio.h>
 
