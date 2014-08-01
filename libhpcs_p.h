@@ -2,9 +2,10 @@
 typedef int uint8_t
 #define true 1
 #define false 0
+#else
+#include <stdbool.h>
 #endif
 
-#include <stdbool.h>
 #include <stdio.h>
 
 enum HPCS_DataCheckCode {
