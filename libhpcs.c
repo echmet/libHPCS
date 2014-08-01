@@ -228,7 +228,7 @@ static enum HPCS_ParseCode autodetect_file_type(FILE* datafile, enum HPCS_FileTy
 	return PARSE_OK;
 }
 
-static enum HPCS_DataCheckCode check_for_marker(const char* const segment, size_t* const next_marker_idx)
+static enum HPCS_DataCheckCode check_for_marker(const char* segment, size_t* const next_marker_idx)
 {
 	if (segment[0] == BIN_MARKER_A && segment[1] != BIN_MARKER_END) {
 		*next_marker_idx += (uint8_t)segment[1] + 1;
