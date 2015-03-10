@@ -17,3 +17,10 @@ set(libHPCS_SRCS
 
 add_library(HPCS SHARED ${libHPCS_SRCS})
 
+if (${BuildTestTool})
+  set(libHPCS_test_SRCS
+      test_tool.c)
+
+  add_executable(test_tool ${libHPCS_test_SRCS})
+  target_link_libraries(test_tool HPCS)
+endif()
