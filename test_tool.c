@@ -1,7 +1,7 @@
 #include <float.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include "libhpcs.h"
+#include "include/libhpcs.h"
 
 int main(int argc, char** argv)
 {

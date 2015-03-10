@@ -1,4 +1,4 @@
-#include "libhpcs.h"
+#include "include/libhpcs.h"
 #include "libhpcs_p.h"
 
 #ifdef __cplusplus
