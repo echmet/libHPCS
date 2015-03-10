@@ -173,8 +173,10 @@ enum HPCS_RetCode hpcs_read_file(const char* filename, struct HPCS_MeasuredData*
 		pret = read_signal(datafile, &mdata->data, &mdata->data_count, guess_elec_sigstep(mdata), mdata->sampling_rate);
 		break;
 	case HPCS_TYPE_CE_PRESSURE:
-	case HPCS_TYPE_CE_TEMPERATURE:
 		pret = read_signal(datafile, &mdata->data, &mdata->data_count, CE_WORK_PARAM_STEP, mdata->sampling_rate);
+		break;
+	case HPCS_TYPE_CE_TEMPERATURE:
+		pret = read_signal(datafile, &mdata->data, &mdata->data_count, CE_WORK_PARAM_OLD_STEP * 10.0, mdata->sampling_rate);
 		break;
 	case HPCS_TYPE_UNKNOWN:
 		ret = HPCS_E_UNKNOWN_TYPE;
