@@ -242,7 +242,7 @@ static HPCS_step guess_current_step(const struct HPCS_MeasuredData* mdata)
 	if (strcmp(mdata->cs_ver, CHEMSTAT_VER_B0625) == 0)
 		return CE_CURRENT_STEP;
 
-	return CE_WORK_PARAM_STEP;
+	return CE_WORK_PARAM_OLD_STEP * 10.0;
 }
 
 static HPCS_step guess_elec_sigstep(const struct HPCS_MeasuredData* mdata)
