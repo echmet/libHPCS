@@ -16,6 +16,9 @@ set(libHPCS_SRCS
     libhpcs.c)
 
 add_library(HPCS SHARED ${libHPCS_SRCS})
+set_target_properties(HPCS
+		      PROPERTIES VERSION 1.0
+		      SOVERSION 1.0)
 
 if (${BuildTestTool})
   set(libHPCS_test_SRCS
