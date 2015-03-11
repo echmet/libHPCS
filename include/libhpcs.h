@@ -5,7 +5,7 @@ extern "C" {
 #include <stddef.h>
 #include <stdint.h>
 
-#ifdef __WIN32__
+#ifdef _WIN32
 #define LIBHPCS_API __declspec(dllexport)
 #define LIBHPCS_CC __cdecl
 #else
