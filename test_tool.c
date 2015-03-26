@@ -22,6 +22,15 @@ int read_data(const char* path)
 		return EXIT_FAILURE;
 	}
 
+	printf("Sample info: %s\n"
+		  "Operator name: %s\n"
+		  "Method name: %s\n"
+		  "Y units: %s\n",
+		  mdata->sample_info,
+		  mdata->operator_name,
+		  mdata->method_name,
+		  mdata->y_units);
+
 	for (di = 0; di < mdata->data_count; di++)
 		printf("Time: %.17lg, Value: %.17lg\n", mdata->data[di].time, mdata->data[di].value);
 

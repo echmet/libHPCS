@@ -476,6 +476,10 @@ out:
 	return ret;
 }
 
+/* This function assumes that the date information are composed only
+   of characters from ISO-8859-1 charset. Under such assumption it is
+   possible to treat UTF-8 strings as single-byte strings with ISO-8859-1
+   encoding */
 static enum HPCS_ParseCode read_date(FILE* datafile, struct HPCS_Date* date)
 {
 	char* date_str;
@@ -768,7 +772,7 @@ static enum HPCS_ParseCode read_sampling_rate(FILE* datafile, double* sampling_r
 static enum HPCS_ParseCode read_string_at_offset(FILE* datafile, const HPCS_offset offset, char** const result)
 {
 	char* string;
-	uint8_t str_length, idx;
+	uint8_t str_length;
 	size_t r;
 
 	fseek(datafile, offset, SEEK_SET);
@@ -779,18 +783,29 @@ static enum HPCS_ParseCode read_string_at_offset(FILE* datafile, const HPCS_offs
 	if (r != 1)
 		return PARSE_E_CANT_READ;
 
-	string = malloc(str_length + 1);
+	if (str_length == 0) {
+		*result = malloc(sizeof(char));
+		*result[0] = 0;
+		return PARSE_OK;
+	}
+
+	string = calloc(str_length + 1, SEGMENT_SIZE);
 	if (string == NULL)
 		return PARSE_E_NO_MEM;
+	memset(string, 0, (str_length + 1) * SEGMENT_SIZE);
 
-	for (idx = 0; idx < str_length; idx++) {
-		fread(string+idx, SMALL_SEGMENT_SIZE, 1, datafile);
-		fseek(datafile, SMALL_SEGMENT_SIZE, SEEK_CUR);
+	r = fread(string, SEGMENT_SIZE, str_length, datafile);
+	if (r < str_length) {
+		free(string);
+		return PARSE_E_CANT_READ;
 	}
-	string[str_length] = 0;
 
-	*result = string;
-	return PARSE_OK;
+#ifdef _WIN32
+	/* String is stored as native Windows WCHAR */
+	return __win32_wchar_to_utf8(result, string);
+#else
+	#error "Not implemented"
+#endif
 }
 
 /** Platform-specific functions */
@@ -869,6 +884,7 @@ static enum HPCS_ParseCode __win32_wchar_to_utf8(char** target, const WCHAR* s)
 		PR_DEBUGF("Count WideCharToMultiByte() error: 0x%x\n", GetLastError());
 		return PARSE_E_INTERNAL;
 	}
+	PR_DEBUGF("mb_size: %d\n", mb_size);
 	*target = malloc(mb_size);
 	if (*target == NULL)
 		return PARSE_E_NO_MEM;
