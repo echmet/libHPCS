@@ -45,8 +45,8 @@ typedef size_t HPCS_segsize;
 
 
 /* Identifiers of file types found at offset 0x1075 onward */
-const char* FILE_TYPE_ID_DAD = "DAD";
-const char* FILE_TYPE_ID_HPCE = "HPCE";
+const char FILE_TYPE_ID_DAD[] = "DAD";
+const char FILE_TYPE_ID_HPCE[] = "HPCE";
 const char FILE_TYPE_HPCE_CCD = 'L';
 const char FILE_TYPE_HPCE_CURRENT = 'C';
 const char FILE_TYPE_HPCE_POWER_PRESSURE = 'P';
@@ -63,18 +63,18 @@ const char WAVELENGTH_END_TEXT = (const char)(0x20);
 const char DATA_FILE_COMMA = (const char)(0x2C);
 const char DATA_FILE_DASH = (const char)(0x2D);
 const char DATA_FILE_COLON = (const char)(0x3A);
-const char* MON_JAN_STR = "Jan";
-const char* MON_FEB_STR = "Feb";
-const char* MON_MAR_STR = "Mar";
-const char* MON_APR_STR = "Apr";
-const char* MON_MAY_STR = "May";
-const char* MON_JUN_STR = "Jun";
-const char* MON_JUL_STR = "Jul";
-const char* MON_AUG_STR = "Aug";
-const char* MON_SEP_STR = "Sep";
-const char* MON_OCT_STR = "Oct";
-const char* MON_NOV_STR = "Nov";
-const char* MON_DEC_STR = "Dec";
+const char MON_JAN_STR[] = "Jan";
+const char MON_FEB_STR[] = "Feb";
+const char MON_MAR_STR[] = "Mar";
+const char MON_APR_STR[] = "Apr";
+const char MON_MAY_STR[] = "May";
+const char MON_JUN_STR[] = "Jun";
+const char MON_JUL_STR[] = "Jul";
+const char MON_AUG_STR[] = "Aug";
+const char MON_SEP_STR[] = "Sep";
+const char MON_OCT_STR[] = "Oct";
+const char MON_NOV_STR[] = "Nov";
+const char MON_DEC_STR[] = "Dec";
 
 /* Precision of measured values. */
 const HPCS_step CE_CURRENT_STEP = 0.01;
@@ -101,7 +101,7 @@ const HPCS_offset DATA_OFFSET_DEVSIG_INFO = 0x1075;
 const HPCS_offset DATA_OFFSET_DATA_START = 0x1800;
 
 /* Known ChemStation format versions */
-const char* CHEMSTAT_VER_B0625 = "B.06.25 [0003]";
+const char CHEMSTAT_VER_B0625[] = "B.06.25 [0003]";
 
 /* Values of markers found in .ch files */
 const char BIN_MARKER_A = 0x10;
@@ -112,12 +112,12 @@ const HPCS_segsize SMALL_SEGMENT_SIZE = 1;
 const HPCS_segsize SEGMENT_SIZE = 2;
 const HPCS_segsize LARGE_SEGMENT_SIZE = 4;
 
-const char* HPCS_OK_STR = "OK.";
-const char* HPCS_E_NULLPTR_STR = "Null pointer to measured data struct.";
-const char* HPCS_E_CANT_OPEN_STR = "Cannot open the specified file.";
-const char* HPCS_E_PARSE_ERROR_STR = "Cannot parse the specified file, it might be corrupted or of unknown type.";
-const char* HPCS_E_UNKNOWN_TYPE_STR = "The specified file contains an unknown type of measurement.";
-const char* HPCS_E__UNKNOWN_EC_STR = "Unknown error code.";
+const char HPCS_OK_STR[] = "OK.";
+const char HPCS_E_NULLPTR_STR[] = "Null pointer to measured data struct.";
+const char HPCS_E_CANT_OPEN_STR[] = "Cannot open the specified file.";
+const char HPCS_E_PARSE_ERROR_STR[] = "Cannot parse the specified file, it might be corrupted or of unknown type.";
+const char HPCS_E_UNKNOWN_TYPE_STR[] = "The specified file contains an unknown type of measurement.";
+const char HPCS_E__UNKNOWN_EC_STR[] = "Unknown error code.";
 
 #ifdef _WIN32
 WCHAR EQUALITY_SIGN[] = { 0x003D, 0x0000 };
