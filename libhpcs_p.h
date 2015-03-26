@@ -11,6 +11,15 @@ typedef int bool;
 #endif
 #include <stdio.h>
 
+#ifdef _WIN32
+#error "Not defined yet!"
+#else
+#include <unicode/ustdio.h>
+#include <unicode/ustring.h>
+#define HPCS_NChar UChar
+#define HPCS_UFH UFILE*
+#endif
+
 enum HPCS_DataCheckCode {
 	DCHECK_GOT_MARKER,
 	DCHECK_EOF,
@@ -107,20 +116,52 @@ const char* HPCS_E_PARSE_ERROR_STR = "Cannot parse the specified file, it might 
 const char* HPCS_E_UNKNOWN_TYPE_STR = "The specified file contains an unknown type of measurement.";
 const char* HPCS_E__UNKNOWN_EC_STR = "Unknown error code.";
 
+#ifdef _WIN32
+#error "Not implemented yet"
+#else
+/* ICU strings declarations */
+UChar* EQUALITY_SIGN;
+UChar* CR_LF;
+#endif
+
 static enum HPCS_ParseCode autodetect_file_type(FILE* datafile, enum HPCS_FileType* file_type, const bool p_means_pressure);
 static enum HPCS_DataCheckCode check_for_marker(const char* segment, size_t* const next_marker_idx);
 static HPCS_step guess_current_step(const struct HPCS_MeasuredData* mdata);
 static HPCS_step guess_elec_sigstep(const struct HPCS_MeasuredData *mdata);
 static bool guess_p_meaning(const struct HPCS_MeasuredData* mdata);
 static void guess_sampling_rate(struct HPCS_MeasuredData* mdata);
+static enum HPCS_ParseCode next_native_line(HPCS_UFH fh, HPCS_NChar* line, int32_t length);
+static HPCS_UFH open_data_file(const char* filename);
+static enum HPCS_ParseCode parse_native_method_info_line(char** name, char** value, HPCS_NChar* line);
 static enum HPCS_ParseCode read_dad_wavelength(FILE* datafile, struct HPCS_Wavelength* const measured, struct HPCS_Wavelength* const reference);
 static uint8_t month_to_number(const char* month);
 static enum HPCS_ParseCode read_date(FILE* datafile, struct HPCS_Date* date);
+static enum HPCS_ParseCode read_method_info_file(HPCS_UFH fh, struct HPCS_MethodInfo* minfo);
 static enum HPCS_ParseCode read_signal(FILE* datafile, struct HPCS_TVPair** pairs, size_t* pairs_count,
 				       const HPCS_step step, const double sampling_rate);
 static enum HPCS_ParseCode read_sampling_rate(FILE* datafile, double* sampling_rate);
 static enum HPCS_ParseCode read_string_at_offset(FILE* datafile, const HPCS_offset, char** const result);
 
+/** Platform-specific functions */
+#ifdef _WIN32
+static enum HPCS_ParseCode __win32_next_native_line(HPCS_UFH, HPCS_NChar* line, int32_t length);
+static HPCS_UFH __win32_open_data_file(const char* filename);
+static enum HPCS_ParseCode __win32_parse_native_method_info_line(char** name, char** value, HPCS_NChar* line);
+#else
+static void __attribute((constructor)) __unix_hpcs_initialize();
+static void __attribute((destructor)) __unix_hpcs_destroy();
+static enum HPCS_ParseCode __unix_icu_to_utf8(char** target, const UChar* s);
+static HPCS_UFH __unix_open_data_file(const char* filename);
+static enum HPCS_ParseCode __unix_next_native_line(UFILE* fh, UChar* line, int32_t length);
+static enum HPCS_ParseCode __unix_parse_native_method_info_line(char** name, char** value, UChar* line);
+
+#define __ICU_INIT_STRING(dst, s) do { \
+	UChar temp[64]; \
+	int32_t length = u_unescape(s, temp, sizeof(temp)); \
+	dst = calloc(length + 1, sizeof(UChar)); \
+	u_strcpy(dst, temp); \
+} while(0)
+#endif
 
 #ifdef _HPCS_LITTLE_ENDIAN
 #define be_to_cpu(bytes) reverse_endianness((char*)bytes, sizeof(bytes));
@@ -148,7 +189,7 @@ void reverse_endianness(char* bytes, size_t sz) {
  #define PR_DEBUGF(fmt, ...) fprintf(stderr, "[%s()] "fmt, __func__, __VA_ARGS__)
  #define PR_DEBUG(msg) fprintf(stderr, "[%s()] "msg, __func__)
 #else
- #define PR_DEBUGF(fmt, msg) ((void)0)
+ #define PR_DEBUGF(fmt, ...) ((void)0)
  #define PR_DEBUG(msg) ((void)0)
 #endif
 

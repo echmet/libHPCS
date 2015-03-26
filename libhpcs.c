@@ -1,6 +1,12 @@
 #include "include/libhpcs.h"
 #include "libhpcs_p.h"
 
+#ifdef _WIN32
+/* Blank for now */
+#else
+#include <unicode/ustdio.h>
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -8,7 +14,7 @@ extern "C" {
 #include <stdlib.h>
 #include <string.h>
 
-struct HPCS_MeasuredData* hpcs_alloc()
+struct HPCS_MeasuredData* hpcs_alloc_mdata()
 {
 	struct HPCS_MeasuredData* mdata = malloc(sizeof(struct HPCS_MeasuredData));
 	if (mdata == NULL)
@@ -24,6 +30,18 @@ struct HPCS_MeasuredData* hpcs_alloc()
 	mdata->data = NULL;
 
 	return mdata;
+}
+
+struct HPCS_MethodInfo* hpcs_alloc_minfo()
+{
+	struct HPCS_MethodInfo* minfo = malloc(sizeof(struct HPCS_MeasuredData));
+	if (minfo == NULL)
+		return NULL;
+
+	minfo->blocks = NULL;
+	minfo->count = 0;
+
+	return minfo;
 }
 
 char* hpcs_error_to_string(const enum HPCS_RetCode err)
@@ -58,7 +76,7 @@ char* hpcs_error_to_string(const enum HPCS_RetCode err)
 	}
 }
 
-void hpcs_free(struct HPCS_MeasuredData* const mdata)
+void hpcs_free_mdata(struct HPCS_MeasuredData* const mdata)
 {
 	if (mdata == NULL)
 		return;
@@ -73,7 +91,23 @@ void hpcs_free(struct HPCS_MeasuredData* const mdata)
 	free(mdata);
 }
 
-enum HPCS_RetCode hpcs_read_file(const char* filename, struct HPCS_MeasuredData* mdata)
+void hpcs_free_minfo(struct HPCS_MethodInfo* const minfo)
+{
+	size_t idx;
+
+	if (minfo == NULL)
+		return;
+
+	for (idx = 0; idx < minfo->count; idx++) {
+		free(minfo->blocks[idx].name);
+		free(minfo->blocks[idx].value);
+	}
+
+	free(minfo->blocks);
+	free(minfo);
+}
+
+enum HPCS_RetCode hpcs_read_mdata(const char* filename, struct HPCS_MeasuredData* mdata)
 {
         FILE* datafile;
 	enum HPCS_ParseCode pret;
@@ -194,6 +228,25 @@ out:
 	return ret;
 }
 
+enum HPCS_RetCode hpcs_read_minfo(const char* filename, struct HPCS_MethodInfo* minfo)
+{
+	enum HPCS_ParseCode pret;
+	HPCS_UFH fh;
+
+	if (minfo == NULL)
+		return HPCS_E_NULLPTR;
+
+	fh = open_data_file(filename);
+	if (fh == NULL)
+		return HPCS_E_CANT_OPEN;
+
+	pret = read_method_info_file(fh, minfo);
+	if (pret != PARSE_OK)
+		return HPCS_E_PARSE_ERROR;
+
+	return HPCS_OK;
+}
+
 static enum HPCS_ParseCode autodetect_file_type(FILE* datafile, enum HPCS_FileType* file_type, const bool p_means_pressure)
 {
 	char* type_id;
@@ -282,6 +335,34 @@ static void guess_sampling_rate(struct HPCS_MeasuredData* mdata)
 			mdata->sampling_rate = CE_WORK_PARAM_SAMPRATE;
 		}
 	}
+}
+
+
+static enum HPCS_ParseCode next_native_line(HPCS_UFH fh, HPCS_NChar* line, int32_t length)
+{
+#ifdef _WIN32
+	return __win32_next_native_line(fh, line, length);
+#else
+	return __unix_next_native_line(fh, line, length);
+#endif
+}
+
+static HPCS_UFH open_data_file(const char* filename)
+{
+#ifdef _WIN32
+	return __win32_open_data_file(filename);
+#else
+	return __unix_open_data_file(filename);
+#endif
+}
+
+static enum HPCS_ParseCode parse_native_method_info_line(char** name, char** value, HPCS_NChar* line)
+{
+#ifdef _WIN32
+	return __win32_parse_native_method_info_line(name, value, line);
+#else
+	return __unix_parse_native_method_info_line(name, value, line);
+#endif
 }
 
 static enum HPCS_ParseCode read_dad_wavelength(FILE* datafile, struct HPCS_Wavelength* const measured, struct HPCS_Wavelength* const reference)
@@ -496,6 +577,44 @@ static uint8_t month_to_number(const char* month)
 		return 0;
 }
 
+static enum HPCS_ParseCode read_method_info_file(HPCS_UFH fh, struct HPCS_MethodInfo* minfo)
+{
+	HPCS_NChar line[64];
+	size_t allocated = 0;
+
+	while (next_native_line(fh, line, 64) == PARSE_OK) {
+		enum HPCS_ParseCode pret;
+		char* name = NULL;
+		char* value = NULL;
+
+		pret = parse_native_method_info_line(&name, &value, line);
+		if (pret != PARSE_OK)
+			return pret;
+
+		if (minfo->count+1 > allocated) {
+			size_t to_allocate;
+			if (allocated == 0)
+				to_allocate = 256;
+			else
+			    to_allocate = allocated * 2;
+
+			struct HPCS_MethodInfoBlock* new_blocks = realloc(minfo->blocks, to_allocate * sizeof(struct HPCS_MethodInfoBlock));
+			if (new_blocks == NULL)
+				return PARSE_E_NO_MEM;
+			else {
+				minfo->blocks = new_blocks;
+				allocated = to_allocate;
+			}
+		}
+
+		minfo->blocks[minfo->count].name = name;
+		minfo->blocks[minfo->count].value = value;
+		minfo->count++;
+	}
+
+	return PARSE_OK;
+}
+
 static enum HPCS_ParseCode read_signal(FILE* datafile, struct HPCS_TVPair** pairs, size_t* pairs_count,
 				       const HPCS_step step, const double sampling_rate)
 {
@@ -664,6 +783,121 @@ static enum HPCS_ParseCode read_string_at_offset(FILE* datafile, const HPCS_offs
 	*result = string;
 	return PARSE_OK;
 }
+
+/** Platform-specific functions */
+
+#ifdef _WIN32
+static enum HPCS_ParseCode __win32_next_native_line(HPCS_UFH fh, HPCS_NChar* line, int32_t length)
+{
+	/* Not implemented */
+	return PARSE_E_CANT_READ;
+}
+
+static HPCS_UFH __win32_open_data_file(const char* filename)
+{
+	/* Not implemented */
+	return NULL;
+}
+
+static enum HPCS_ParseCode __win32_parse_native_method_info_line(char** name, char** value, UChar* line)
+{
+	/* Not implemented */
+	return PARSE_E_CANT_READ;
+}
+#else
+static void __unix_hpcs_initialize()
+{
+	/* Initialize all Unicode strings */
+	__ICU_INIT_STRING(EQUALITY_SIGN, "\\x3d");
+	__ICU_INIT_STRING(CR_LF, "\\x0d\\x0a");
+}
+
+static void __unix_hpcs_destroy()
+{
+	free(EQUALITY_SIGN);
+	free(CR_LF);
+}
+
+static enum HPCS_ParseCode __unix_icu_to_utf8(char** target, const UChar* s)
+{
+	UChar32 c;
+	UErrorCode uec = U_ZERO_ERROR;
+	int32_t utf8_size = 0;
+	int32_t idx = 0;
+#ifndef NDEBUG
+	int32_t wrt_size;
+#define pWrt_size &wrt_size
+#else
+#define pWrt_size NULL
+#endif
+
+	do {
+		U16_NEXT(s, idx, -1, c);
+		utf8_size += U8_LENGTH(c);
+	} while (c != 0);
+
+	*target = malloc(utf8_size);
+	if (*target == NULL)
+		return PARSE_E_NO_MEM;
+
+	u_strToUTF8(*target, utf8_size, pWrt_size, s, -1, &uec);
+
+	PR_DEBUGF("Memory allocated: %d, Units written: %d, UEC: %x\n", utf8_size, wrt_size, uec);
+	PR_DEBUGF("Resulting string: %s\n", *target);
+
+	if (U_FAILURE(uec)) {
+		PR_DEBUGF("ICU error: %s\n", u_errorName(uec));
+		free(*target);
+		return PARSE_E_CANT_READ;
+	}
+
+	return PARSE_OK;
+}
+
+static enum HPCS_ParseCode __unix_next_native_line(UFILE* fh, UChar* line, int32_t length)
+{
+	if (u_fgets(line, length, fh) == NULL)
+		return PARSE_E_CANT_READ;
+
+	return PARSE_OK;
+}
+
+static UFILE* __unix_open_data_file(const char* filename)
+{
+	return u_fopen(filename, "r", "en_US", "UTF-16");
+}
+
+static enum HPCS_ParseCode __unix_parse_native_method_info_line(char** name, char** value, UChar* line)
+{
+	UChar* u_name;
+	UChar* u_value;
+	UChar* saveptr;
+	UChar* newline;
+	enum HPCS_ParseCode ret;
+
+	u_name = u_strtok_r(line, EQUALITY_SIGN, &saveptr);
+	if (u_name == NULL)
+		return PARSE_E_NOT_FOUND;
+	u_value = u_strtok_r(NULL, EQUALITY_SIGN, &saveptr);
+	if (u_value == NULL) {
+		free(u_name);
+		return PARSE_E_NOT_FOUND;
+	}
+	/* Remove the trailing \n from value if present */
+	newline = u_strrstr(u_value, CR_LF);
+	if (newline != NULL)
+		*newline = (UChar)0;
+
+	ret = __unix_icu_to_utf8(name, u_name);
+	if (ret != PARSE_OK)
+		return ret;
+	ret = __unix_icu_to_utf8(value, u_value);
+	if (ret != PARSE_OK)
+		return ret;
+
+	return PARSE_OK;
+}
+#endif
 
 #ifdef __cplusplus
 }

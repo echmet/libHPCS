@@ -29,7 +29,8 @@ enum HPCS_RetCode {
 	HPCS_E_NULLPTR,
 	HPCS_E_CANT_OPEN,
 	HPCS_E_PARSE_ERROR,
-	HPCS_E_UNKNOWN_TYPE
+	HPCS_E_UNKNOWN_TYPE,
+	HPCS_E_NOTIMPL
 };
 
 struct HPCS_Date {
@@ -68,10 +69,23 @@ struct HPCS_MeasuredData {
 	size_t data_count;
 };
 
-LIBHPCS_API struct HPCS_MeasuredData* LIBHPCS_CC hpcs_alloc();
-LIBHPCS_API void LIBHPCS_CC hpcs_free(struct HPCS_MeasuredData* const mdata);
+struct HPCS_MethodInfoBlock {
+	char* name;
+	char* value;
+};
+
+struct HPCS_MethodInfo {
+	struct HPCS_MethodInfoBlock* blocks;
+	size_t count;
+};
+
+LIBHPCS_API struct HPCS_MeasuredData* LIBHPCS_CC hpcs_alloc_mdata();
+LIBHPCS_API struct HPCS_MethodInfo* LIBHPCS_CC hpcs_alloc_minfo();
+LIBHPCS_API void LIBHPCS_CC hpcs_free_mdata(struct HPCS_MeasuredData* const mdata);
+LIBHPCS_API void LIBHPCS_CC hpcs_free_minfo(struct HPCS_MethodInfo* const minfo);
 LIBHPCS_API char* LIBHPCS_CC hpcs_error_to_string(const enum HPCS_RetCode);
-LIBHPCS_API enum HPCS_RetCode LIBHPCS_CC hpcs_read_file(const char* filename, struct HPCS_MeasuredData* mdata);
+LIBHPCS_API enum HPCS_RetCode LIBHPCS_CC hpcs_read_mdata(const char* filename, struct HPCS_MeasuredData* mdata);
+LIBHPCS_API enum HPCS_RetCode LIBHPCS_CC hpcs_read_minfo(const char* filename, struct HPCS_MethodInfo* minfo);
 
 #ifdef __cplusplus
 }
