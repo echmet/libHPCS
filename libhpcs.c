@@ -2,7 +2,16 @@
 #include "libhpcs_p.h"
 
 #ifdef _WIN32
-/* Blank for now */
+#include <sdkddkver.h>
+#ifndef _WIN32_WINNT_WIN8
+#define _WIN32_WINNT_WIN8 0x0602
+#endif
+#if _WIN32_WINNT > _WIN32_WINNT_WIN8
+#include <Stringapiset.h>
+#else
+#include <WinNls.h>
+#endif
+#include <Shlwapi.h>
 #else
 #include <unicode/ustdio.h>
 #endif
@@ -787,22 +796,90 @@ static enum HPCS_ParseCode read_string_at_offset(FILE* datafile, const HPCS_offs
 /** Platform-specific functions */
 
 #ifdef _WIN32
-static enum HPCS_ParseCode __win32_next_native_line(HPCS_UFH fh, HPCS_NChar* line, int32_t length)
+static enum HPCS_ParseCode __win32_next_native_line(FILE* fh, WCHAR* line, int32_t length)
 {
-	/* Not implemented */
-	return PARSE_E_CANT_READ;
+	if (fgetws(line, length, fh) == NULL)
+		return PARSE_E_CANT_READ;
+
+	return PARSE_OK;
 }
 
-static HPCS_UFH __win32_open_data_file(const char* filename)
+static FILE* __win32_open_data_file(const char* filename)
 {
-	/* Not implemented */
-	return NULL;
+	FILE* fh;
+	WCHAR* w_filename;
+	int w_size;
+
+	/* Get the required size */
+	w_size = MultiByteToWideChar(CP_ACP, MB_PRECOMPOSED, filename, -1, NULL, 0);
+	if (w_size == 0) {
+		PR_DEBUGF("Count MultiByteToWideChar() error: %x\n", GetLastError());
+		return NULL;
+	}
+	w_filename = calloc(w_size, sizeof(WCHAR));
+	if (w_filename == NULL)
+		return NULL;
+
+	if (MultiByteToWideChar(CP_ACP, MB_PRECOMPOSED, filename, -1, w_filename, w_size) == 0) {
+		PR_DEBUGF("Convert MultiByteToWideChar() error: %x\n", GetLastError());
+		free(w_filename);
+		return NULL;
+	}
+	fh = _wfopen(w_filename, L"r, ccs=UNICODE");
+
+	free(w_filename);
+	return fh;
 }
 
-static enum HPCS_ParseCode __win32_parse_native_method_info_line(char** name, char** value, UChar* line)
+static enum HPCS_ParseCode __win32_parse_native_method_info_line(char** name, char** value, WCHAR* line)
 {
-	/* Not implemented */
-	return PARSE_E_CANT_READ;
+	WCHAR* w_name;
+	WCHAR* w_value;
+	WCHAR* w_newline;
+	enum HPCS_ParseCode ret;
+
+	w_name = wcstok(line, EQUALITY_SIGN);
+	if (w_name == NULL)
+		return PARSE_E_NOT_FOUND;
+	w_value = wcstok(NULL, EQUALITY_SIGN);
+	if (w_value == NULL)
+		return PARSE_E_NOT_FOUND;
+
+	/* Remove trailing \n from w_value, if any */
+	w_newline = StrStrW(w_value, CR_LF);
+	if (w_newline != NULL)
+		*w_newline = (WCHAR)0;
+
+	ret = __win32_wchar_to_utf8(name, w_name);
+	if (ret != PARSE_OK)
+		return ret;
+	ret = __win32_wchar_to_utf8(value, w_value);
+	if (ret != PARSE_OK)
+		return ret;
+
+	return PARSE_OK;
+}
+
+static enum HPCS_ParseCode __win32_wchar_to_utf8(char** target, const WCHAR* s)
+{
+	int mb_size;
+
+	mb_size = WideCharToMultiByte(CP_UTF8, 0, s, -1, NULL, 0, NULL, NULL);
+	if (mb_size == 0) {
+		PR_DEBUGF("Count WideCharToMultiByte() error: 0x%x\n", GetLastError());
+		return PARSE_E_INTERNAL;
+	}
+	*target = malloc(mb_size);
+	if (*target == NULL)
+		return PARSE_E_NO_MEM;
+
+	if (WideCharToMultiByte(CP_UTF8, 0, s, -1, *target, mb_size, NULL, NULL) == 0) {
+		free(*target);
+		PR_DEBUGF("Convert WideCharToMultiByte() error: 0x%x\n", GetLastError());
+		return PARSE_E_INTERNAL;
+	}
+
+	return PARSE_OK;
 }
 #else
 static void __unix_hpcs_initialize()

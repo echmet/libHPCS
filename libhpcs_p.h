@@ -12,7 +12,9 @@ typedef int bool;
 #include <stdio.h>
 
 #ifdef _WIN32
-#error "Not defined yet!"
+#include <Windows.h>
+#define HPCS_NChar WCHAR
+#define HPCS_UFH FILE*
 #else
 #include <unicode/ustdio.h>
 #include <unicode/ustring.h>
@@ -33,6 +35,7 @@ enum HPCS_ParseCode {
 	PARSE_E_CANT_READ,
 	PARSE_E_NOT_FOUND,
 	PARSE_E_INV_PARAM,
+	PARSE_E_INTERNAL,
 	PARSE_W_NO_DATA
 };
 
@@ -117,9 +120,9 @@ const char* HPCS_E_UNKNOWN_TYPE_STR = "The specified file contains an unknown ty
 const char* HPCS_E__UNKNOWN_EC_STR = "Unknown error code.";
 
 #ifdef _WIN32
-#error "Not implemented yet"
+WCHAR EQUALITY_SIGN[] = { 0x003D, 0x0000 };
+WCHAR CR_LF[] = { 0x000A, 0x0000 }; /* Windows hides the actual end-of-line which is {0x000D, 0x000A} from us */
 #else
-/* ICU strings declarations */
 UChar* EQUALITY_SIGN;
 UChar* CR_LF;
 #endif
@@ -144,9 +147,10 @@ static enum HPCS_ParseCode read_string_at_offset(FILE* datafile, const HPCS_offs
 
 /** Platform-specific functions */
 #ifdef _WIN32
-static enum HPCS_ParseCode __win32_next_native_line(HPCS_UFH, HPCS_NChar* line, int32_t length);
+static enum HPCS_ParseCode __win32_next_native_line(FILE* fh, WCHAR* line, int32_t length);
 static HPCS_UFH __win32_open_data_file(const char* filename);
-static enum HPCS_ParseCode __win32_parse_native_method_info_line(char** name, char** value, HPCS_NChar* line);
+static enum HPCS_ParseCode __win32_parse_native_method_info_line(char** name, char** value, WCHAR* line);
+static enum HPCS_ParseCode __win32_wchar_to_utf8(char** target, const WCHAR* s);
 #else
 static void __attribute((constructor)) __unix_hpcs_initialize();
 static void __attribute((destructor)) __unix_hpcs_destroy();

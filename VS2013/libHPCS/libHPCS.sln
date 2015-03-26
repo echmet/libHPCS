@@ -5,16 +5,33 @@ VisualStudioVersion = 12.0.31101.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "libHPCS", "libHPCS.vcxproj", "{5B9F8B15-85D5-4D5F-8F22-BB576E4CD4B6}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "test_tool", "..\test_tool\test_tool.vcxproj", "{3F415811-5359-48A6-9729-34BB4A3D7DDA}"
+	ProjectSection(ProjectDependencies) = postProject
+		{5B9F8B15-85D5-4D5F-8F22-BB576E4CD4B6} = {5B9F8B15-85D5-4D5F-8F22-BB576E4CD4B6}
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug with test_tool|Win32 = Debug with test_tool|Win32
 		Debug|Win32 = Debug|Win32
+		Release with test_tool|Win32 = Release with test_tool|Win32
 		Release|Win32 = Release|Win32
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{5B9F8B15-85D5-4D5F-8F22-BB576E4CD4B6}.Debug with test_tool|Win32.ActiveCfg = Debug with test_tool|Win32
+		{5B9F8B15-85D5-4D5F-8F22-BB576E4CD4B6}.Debug with test_tool|Win32.Build.0 = Debug with test_tool|Win32
 		{5B9F8B15-85D5-4D5F-8F22-BB576E4CD4B6}.Debug|Win32.ActiveCfg = Debug|Win32
 		{5B9F8B15-85D5-4D5F-8F22-BB576E4CD4B6}.Debug|Win32.Build.0 = Debug|Win32
+		{5B9F8B15-85D5-4D5F-8F22-BB576E4CD4B6}.Release with test_tool|Win32.ActiveCfg = Release with test_tool|Win32
+		{5B9F8B15-85D5-4D5F-8F22-BB576E4CD4B6}.Release with test_tool|Win32.Build.0 = Release with test_tool|Win32
 		{5B9F8B15-85D5-4D5F-8F22-BB576E4CD4B6}.Release|Win32.ActiveCfg = Release|Win32
 		{5B9F8B15-85D5-4D5F-8F22-BB576E4CD4B6}.Release|Win32.Build.0 = Release|Win32
+		{3F415811-5359-48A6-9729-34BB4A3D7DDA}.Debug with test_tool|Win32.ActiveCfg = Debug with test_tool|Win32
+		{3F415811-5359-48A6-9729-34BB4A3D7DDA}.Debug with test_tool|Win32.Build.0 = Debug with test_tool|Win32
+		{3F415811-5359-48A6-9729-34BB4A3D7DDA}.Debug|Win32.ActiveCfg = Debug|Win32
+		{3F415811-5359-48A6-9729-34BB4A3D7DDA}.Release with test_tool|Win32.ActiveCfg = Release with test_tool|Win32
+		{3F415811-5359-48A6-9729-34BB4A3D7DDA}.Release with test_tool|Win32.Build.0 = Release with test_tool|Win32
+		{3F415811-5359-48A6-9729-34BB4A3D7DDA}.Release|Win32.ActiveCfg = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
