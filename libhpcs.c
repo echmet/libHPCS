@@ -346,6 +346,35 @@ static void guess_sampling_rate(struct HPCS_MeasuredData* mdata)
 	}
 }
 
+static uint8_t month_to_number(const char* month)
+{
+	if (strcmp(MON_JAN_STR, month) == 0)
+		return 1;
+	else if (strcmp(MON_FEB_STR, month) == 0)
+		return 2;
+	else if (strcmp(MON_MAR_STR, month) == 0)
+		return 3;
+	else if (strcmp(MON_APR_STR, month) == 0)
+		return 4;
+	else if (strcmp(MON_MAY_STR, month) == 0)
+		return 5;
+	else if (strcmp(MON_JUN_STR, month) == 0)
+		return 6;
+	else if (strcmp(MON_JUL_STR, month) == 0)
+		return 7;
+	else if (strcmp(MON_AUG_STR, month) == 0)
+		return 8;
+	else if (strcmp(MON_SEP_STR, month) == 0)
+		return 9;
+	else if (strcmp(MON_OCT_STR, month) == 0)
+		return 10;
+	else if (strcmp(MON_NOV_STR, month) == 0)
+		return 11;
+	else if (strcmp(MON_DEC_STR, month) == 0)
+		return 12;
+	else
+		return 0;
+}
 
 static enum HPCS_ParseCode next_native_line(HPCS_UFH fh, HPCS_NChar* line, int32_t length)
 {
@@ -558,36 +587,6 @@ static enum HPCS_ParseCode read_date(FILE* datafile, struct HPCS_Date* date)
 
 	free(date_str);
 	return PARSE_OK;
-}
-
-static uint8_t month_to_number(const char* month)
-{
-	if (strcmp(MON_JAN_STR, month) == 0)
-		return 1;
-	else if (strcmp(MON_FEB_STR, month) == 0)
-		return 2;
-	else if (strcmp(MON_MAR_STR, month) == 0)
-		return 3;
-	else if (strcmp(MON_APR_STR, month) == 0)
-		return 4;
-	else if (strcmp(MON_MAY_STR, month) == 0)
-		return 5;
-	else if (strcmp(MON_JUN_STR, month) == 0)
-		return 6;
-	else if (strcmp(MON_JUL_STR, month) == 0)
-		return 7;
-	else if (strcmp(MON_AUG_STR, month) == 0)
-		return 8;
-	else if (strcmp(MON_SEP_STR, month) == 0)
-		return 9;
-	else if (strcmp(MON_OCT_STR, month) == 0)
-		return 10;
-	else if (strcmp(MON_NOV_STR, month) == 0)
-		return 11;
-	else if (strcmp(MON_DEC_STR, month) == 0)
-		return 12;
-	else
-		return 0;
 }
 
 static enum HPCS_ParseCode read_method_info_file(HPCS_UFH fh, struct HPCS_MethodInfo* minfo)
