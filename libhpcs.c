@@ -804,7 +804,8 @@ static enum HPCS_ParseCode read_string_at_offset(FILE* datafile, const HPCS_offs
 	/* String is stored as native Windows WCHAR */
 	return __win32_wchar_to_utf8(result, string);
 #else
-	#error "Not implemented"
+	/* Explicitly convert from UTF-16LE (internal WCHAR representation) */
+	return __unix_wchar_to_utf8(result, string, str_length * SEGMENT_SIZE);
 #endif
 }
 
@@ -913,35 +914,42 @@ static void __unix_hpcs_destroy()
 
 static enum HPCS_ParseCode __unix_icu_to_utf8(char** target, const UChar* s)
 {
-	UChar32 c;
+	int32_t utf8_size;
+	UConverter* cnv;
 	UErrorCode uec = U_ZERO_ERROR;
-	int32_t utf8_size = 0;
-	int32_t idx = 0;
-#ifndef NDEBUG
-	int32_t wrt_size;
-#define pWrt_size &wrt_size
-#else
-#define pWrt_size NULL
-#endif
 
-	do {
-		U16_NEXT(s, idx, -1, c);
-		utf8_size += U8_LENGTH(c);
-	} while (c != 0);
-
-	*target = malloc(utf8_size);
-	if (*target == NULL)
-		return PARSE_E_NO_MEM;
-
-	u_strToUTF8(*target, utf8_size, pWrt_size, s, -1, &uec);
-
-	PR_DEBUGF("Memory allocated: %d, Units written: %d, UEC: %x\n", utf8_size, wrt_size, uec);
-	PR_DEBUGF("Resulting string: %s\n", *target);
-
+	cnv = ucnv_open("UTF-8", &uec);
 	if (U_FAILURE(uec)) {
-		PR_DEBUGF("ICU error: %s\n", u_errorName(uec));
-		free(*target);
+		PR_DEBUGF("Unable to create converter, error: %s\n", u_errorName(uec));
+		return PARSE_E_INTERNAL;
+	}
+
+	utf8_size = ucnv_fromUChars(cnv, NULL, 0, s, -1, &uec);
+	if (U_FAILURE(uec) && uec != U_BUFFER_OVERFLOW_ERROR) {
+		ucnv_close(cnv);
+		PR_DEBUGF("Count ucnv_fromUChars(), error: %s\n", u_errorName(uec));
+		return PARSE_E_INTERNAL;
+	}
+	uec = U_ZERO_ERROR;
+
+	if (utf8_size == 0) {
+		ucnv_close(cnv);
 		return PARSE_E_CANT_READ;
+	}
+
+	*target = malloc(utf8_size + 1);
+	if (*target == NULL) {
+		ucnv_close(cnv);
+		return PARSE_E_NO_MEM;
+	}
+	memset(*target, 0, utf8_size + 1);
+
+	ucnv_fromUChars(cnv, *target, utf8_size, s, -1, &uec);
+	ucnv_close(cnv);
+	if (U_FAILURE(uec)) {
+		free(*target);
+		PR_DEBUGF("Convert ucnv_fromUChars(), error: %s\n", u_errorName(uec));
+		return PARSE_E_INTERNAL;
 	}
 
 	return PARSE_OK;
@@ -989,6 +997,52 @@ static enum HPCS_ParseCode __unix_parse_native_method_info_line(char** name, cha
 		return ret;
 
 	return PARSE_OK;
+}
+
+static enum HPCS_ParseCode __unix_wchar_to_utf8(char** target, const char* bytes, const size_t bytes_count)
+{
+	int32_t u_size;
+	UChar* u_str;
+	UConverter* cnv;
+	enum HPCS_ParseCode ret;
+	UErrorCode uec = U_ZERO_ERROR;
+
+	cnv = ucnv_open("UTF-16LE", &uec);
+	if (U_FAILURE(uec)) {
+		PR_DEBUGF("Unable to create converter, error: %s\n", u_errorName(uec));
+		return PARSE_E_INTERNAL;
+	}
+
+	u_size = ucnv_toUChars(cnv, NULL, 0, bytes, bytes_count, &uec);
+	if (U_FAILURE(uec) && uec != U_BUFFER_OVERFLOW_ERROR) {
+		ucnv_close(cnv);
+		PR_DEBUGF("Count ucnv_toUchars(), error: %s\n", u_errorName(uec));
+		return PARSE_E_INTERNAL;
+	}
+	uec = U_ZERO_ERROR;
+
+	if (u_size == 0) {
+		ucnv_close(cnv);
+		return PARSE_E_CANT_READ;
+	}
+	u_str = calloc(u_size + 1, sizeof(UChar));
+	if (u_str == NULL) {
+		ucnv_close(cnv);
+		return PARSE_E_NO_MEM;
+	}
+	memset(u_str, 0, (u_size + 1) * sizeof(UChar));
+
+	ucnv_toUChars(cnv, u_str, u_size, bytes, bytes_count, &uec);
+	ucnv_close(cnv);
+	if (U_FAILURE(uec)) {
+		free(u_str);
+		PR_DEBUGF("Convert ucnv_toUchars(), error: %s\n", u_errorName(uec));
+		return PARSE_E_INTERNAL;
+	}
+
+	ret = __unix_icu_to_utf8(target, u_str);
+	free(u_str);
+	return ret;
 }
 #endif
 

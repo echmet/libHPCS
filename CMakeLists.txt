@@ -17,7 +17,7 @@ else()
   add_definitions(-D_HPCS_LITTLE_ENDIAN)
 endif()
 
-find_package(ICU 54 REQUIRED COMPONENTS uc io)
+find_package(ICU 52 REQUIRED COMPONENTS uc io)
 
 set(libHPCS_SRCS
     libhpcs.c)
@@ -29,8 +29,8 @@ include_directories(
 add_library(HPCS SHARED ${libHPCS_SRCS})
 target_link_libraries(HPCS PRIVATE ${ICU_LIBRARIES})
 set_target_properties(HPCS
-		      PROPERTIES VERSION 2.0
-		      SOVERSION 2.0)
+		      PROPERTIES VERSION 3.0
+		      SOVERSION 3.0)
 
 if (${BuildTestTool})
   set(libHPCS_test_SRCS

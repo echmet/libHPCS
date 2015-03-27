@@ -158,6 +158,7 @@ static enum HPCS_ParseCode __unix_icu_to_utf8(char** target, const UChar* s);
 static HPCS_UFH __unix_open_data_file(const char* filename);
 static enum HPCS_ParseCode __unix_next_native_line(UFILE* fh, UChar* line, int32_t length);
 static enum HPCS_ParseCode __unix_parse_native_method_info_line(char** name, char** value, UChar* line);
+static enum HPCS_ParseCode __unix_wchar_to_utf8(char** target, const char* bytes, const size_t bytes_count);
 
 #define __ICU_INIT_STRING(dst, s) do { \
 	UChar temp[64]; \
