@@ -857,8 +857,14 @@ static enum HPCS_ParseCode __win32_parse_native_method_info_line(char** name, ch
 	if (w_name == NULL)
 		return PARSE_E_NOT_FOUND;
 	w_value = wcstok(NULL, EQUALITY_SIGN);
-	if (w_value == NULL)
-		return PARSE_E_NOT_FOUND;
+	if (w_value == NULL) {
+		/* Add an empty string if there is no value */
+		*value = malloc(1);
+		if (*value == NULL)
+			return PARSE_E_NO_MEM;
+		*value[0] = 0;
+		return PARSE_OK;
+	}
 
 	/* Remove trailing \n from w_value, if any */
 	w_newline = StrStrW(w_value, CR_LF);
@@ -980,8 +986,12 @@ static enum HPCS_ParseCode __unix_parse_native_method_info_line(char** name, cha
 		return PARSE_E_NOT_FOUND;
 	u_value = u_strtok_r(NULL, EQUALITY_SIGN, &saveptr);
 	if (u_value == NULL) {
-		free(u_name);
-		return PARSE_E_NOT_FOUND;
+		/* Add an empty string if there is no value */
+		*value = malloc(1);
+		if (*value == NULL)
+			return PARSE_E_NO_MEM;
+		*value[0] = 0;
+		return PARSE_OK;
 	}
 	/* Remove the trailing \n from value if present */
 	newline = u_strrstr(u_value, CR_LF);
