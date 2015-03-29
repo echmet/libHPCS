@@ -53,35 +53,21 @@ struct HPCS_MethodInfo* hpcs_alloc_minfo()
 	return minfo;
 }
 
-char* hpcs_error_to_string(const enum HPCS_RetCode err)
+const char* hpcs_error_to_string(const enum HPCS_RetCode err)
 {
-	char* msg;
-
 	switch (err) {
 	case HPCS_OK:
-		msg = malloc(strlen(HPCS_OK_STR) + 1);
-		strcpy(msg, HPCS_OK_STR);
-		return msg;
+		return HPCS_OK_STR;
 	case HPCS_E_NULLPTR:
-		msg = malloc(strlen(HPCS_E_NULLPTR_STR) + 1);
-		strcpy(msg, HPCS_E_NULLPTR_STR);
-		return msg;
+		return HPCS_E_NULLPTR_STR;
 	case HPCS_E_CANT_OPEN:
-		msg = malloc(strlen(HPCS_E_CANT_OPEN_STR) + 1);
-		strcpy(msg, HPCS_E_CANT_OPEN_STR);
-		return msg;
+		return HPCS_E_CANT_OPEN_STR;
 	case HPCS_E_PARSE_ERROR:
-		msg = malloc(strlen(HPCS_E_PARSE_ERROR_STR) + 1);
-		strcpy(msg, HPCS_E_PARSE_ERROR_STR);
-		return msg;
+		return HPCS_E_PARSE_ERROR_STR;
 	case HPCS_E_UNKNOWN_TYPE:
-		msg = malloc(strlen(HPCS_E_UNKNOWN_TYPE_STR) + 1);
-		strcpy(msg, HPCS_E_UNKNOWN_TYPE_STR);
-		return msg;
+		return HPCS_E_UNKNOWN_TYPE_STR;
 	default:
-		msg = malloc(strlen(HPCS_E__UNKNOWN_EC_STR) + 1);
-		strcpy(msg, HPCS_E__UNKNOWN_EC_STR);
-		return msg;
+		return HPCS_E__UNKNOWN_EC_STR;
 	}
 }
 
@@ -600,8 +586,11 @@ static enum HPCS_ParseCode read_method_info_file(HPCS_UFH fh, struct HPCS_Method
 		char* value = NULL;
 
 		pret = parse_native_method_info_line(&name, &value, line);
-		if (pret != PARSE_OK)
+		if (pret != PARSE_OK) {
+			free(name);
+			free(value);
 			return pret;
+		}
 
 		if (minfo->count+1 > allocated) {
 			size_t to_allocate;
@@ -859,6 +848,11 @@ static enum HPCS_ParseCode __win32_parse_native_method_info_line(char** name, ch
 	w_name = wcstok(line, EQUALITY_SIGN);
 	if (w_name == NULL)
 		return PARSE_E_NOT_FOUND;
+
+	ret = __win32_wchar_to_utf8(name, w_name);
+	if (ret != PARSE_OK)
+		return ret;
+
 	w_value = wcstok(NULL, EQUALITY_SIGN);
 	if (w_value == NULL) {
 		/* Add an empty string if there is no value */
@@ -868,15 +862,11 @@ static enum HPCS_ParseCode __win32_parse_native_method_info_line(char** name, ch
 		*value[0] = 0;
 		return PARSE_OK;
 	}
-
 	/* Remove trailing \n from w_value, if any */
 	w_newline = StrStrW(w_value, CR_LF);
 	if (w_newline != NULL)
 		*w_newline = (WCHAR)0;
 
-	ret = __win32_wchar_to_utf8(name, w_name);
-	if (ret != PARSE_OK)
-		return ret;
 	ret = __win32_wchar_to_utf8(value, w_value);
 	if (ret != PARSE_OK)
 		return ret;
@@ -987,6 +977,10 @@ static enum HPCS_ParseCode __unix_parse_native_method_info_line(char** name, cha
 	u_name = u_strtok_r(line, EQUALITY_SIGN, &saveptr);
 	if (u_name == NULL)
 		return PARSE_E_NOT_FOUND;
+	ret = __unix_icu_to_utf8(name, u_name);
+	if (ret != PARSE_OK)
+		return ret;
+
 	u_value = u_strtok_r(NULL, EQUALITY_SIGN, &saveptr);
 	if (u_value == NULL) {
 		/* Add an empty string if there is no value */
@@ -1001,9 +995,6 @@ static enum HPCS_ParseCode __unix_parse_native_method_info_line(char** name, cha
 	if (newline != NULL)
 		*newline = (UChar)0;
 
-	ret = __unix_icu_to_utf8(name, u_name);
-	if (ret != PARSE_OK)
-		return ret;
 	ret = __unix_icu_to_utf8(value, u_value);
 	if (ret != PARSE_OK)
 		return ret;

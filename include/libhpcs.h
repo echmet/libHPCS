@@ -83,7 +83,7 @@ LIBHPCS_API struct HPCS_MeasuredData* LIBHPCS_CC hpcs_alloc_mdata();
 LIBHPCS_API struct HPCS_MethodInfo* LIBHPCS_CC hpcs_alloc_minfo();
 LIBHPCS_API void LIBHPCS_CC hpcs_free_mdata(struct HPCS_MeasuredData* const mdata);
 LIBHPCS_API void LIBHPCS_CC hpcs_free_minfo(struct HPCS_MethodInfo* const minfo);
-LIBHPCS_API char* LIBHPCS_CC hpcs_error_to_string(const enum HPCS_RetCode);
+LIBHPCS_API const char* LIBHPCS_CC hpcs_error_to_string(const enum HPCS_RetCode);
 LIBHPCS_API enum HPCS_RetCode LIBHPCS_CC hpcs_read_mdata(const char* filename, struct HPCS_MeasuredData* mdata);
 LIBHPCS_API enum HPCS_RetCode LIBHPCS_CC hpcs_read_minfo(const char* filename, struct HPCS_MethodInfo* minfo);
 
