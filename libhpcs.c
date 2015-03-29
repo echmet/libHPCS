@@ -791,7 +791,7 @@ static enum HPCS_ParseCode read_string_at_offset(FILE* datafile, const HPCS_offs
 
 #ifdef _WIN32
 	/* String is stored as native Windows WCHAR */
-	ret = __win32_wchar_to_utf8(result, string);
+	ret = __win32_wchar_to_utf8(result, (WCHAR*)string);
 #else
 	/* Explicitly convert from UTF-16LE (internal WCHAR representation) */
 	ret = __unix_wchar_to_utf8(result, string, str_length * SEGMENT_SIZE);
