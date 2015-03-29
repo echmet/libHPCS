@@ -800,6 +800,20 @@ static enum HPCS_ParseCode read_string_at_offset(FILE* datafile, const HPCS_offs
 	return ret;
 }
 
+static void remove_trailing_newline(HPCS_NChar* s)
+{
+	HPCS_NChar* newline;
+#ifdef _WIN32
+	newline = StrStrW(s, CR_LF);
+	if (newline != NULL)
+		*newline = (WCHAR)0;
+#else	
+	newline = u_strrstr(s, CR_LF);
+	if (newline != NULL)
+		*newline = (UChar)0;
+#endif
+}
+
 /** Platform-specific functions */
 
 #ifdef _WIN32
@@ -842,13 +856,13 @@ static enum HPCS_ParseCode __win32_parse_native_method_info_line(char** name, ch
 {
 	WCHAR* w_name;
 	WCHAR* w_value;
-	WCHAR* w_newline;
 	enum HPCS_ParseCode ret;
 
 	w_name = wcstok(line, EQUALITY_SIGN);
 	if (w_name == NULL)
 		return PARSE_E_NOT_FOUND;
 
+	remove_trailing_newline(w_name);
 	ret = __win32_wchar_to_utf8(name, w_name);
 	if (ret != PARSE_OK)
 		return ret;
@@ -862,11 +876,8 @@ static enum HPCS_ParseCode __win32_parse_native_method_info_line(char** name, ch
 		*value[0] = 0;
 		return PARSE_OK;
 	}
-	/* Remove trailing \n from w_value, if any */
-	w_newline = StrStrW(w_value, CR_LF);
-	if (w_newline != NULL)
-		*w_newline = (WCHAR)0;
 
+	remove_trailing_newline(w_value);
 	ret = __win32_wchar_to_utf8(value, w_value);
 	if (ret != PARSE_OK)
 		return ret;
@@ -971,12 +982,13 @@ static enum HPCS_ParseCode __unix_parse_native_method_info_line(char** name, cha
 	UChar* u_name;
 	UChar* u_value;
 	UChar* saveptr;
-	UChar* newline;
 	enum HPCS_ParseCode ret;
 
 	u_name = u_strtok_r(line, EQUALITY_SIGN, &saveptr);
 	if (u_name == NULL)
 		return PARSE_E_NOT_FOUND;
+
+	remove_trailing_newline(u_name);
 	ret = __unix_icu_to_utf8(name, u_name);
 	if (ret != PARSE_OK)
 		return ret;
@@ -990,11 +1002,8 @@ static enum HPCS_ParseCode __unix_parse_native_method_info_line(char** name, cha
 		*value[0] = 0;
 		return PARSE_OK;
 	}
-	/* Remove the trailing \n from value if present */
-	newline = u_strrstr(u_value, CR_LF);
-	if (newline != NULL)
-		*newline = (UChar)0;
 
+	remove_trailing_newline(u_value);
 	ret = __unix_icu_to_utf8(value, u_value);
 	if (ret != PARSE_OK)
 		return ret;
