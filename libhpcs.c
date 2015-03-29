@@ -491,8 +491,8 @@ out:
 	return ret;
 }
 
-/* This function assumes that the date information are composed only
-   of characters from ISO-8859-1 charset. Under such assumption it is
+/* This function assumes that the date information are composed only of the
+   first 127 characters from ISO-8859-1 charset. Under such assumption it is
    possible to treat UTF-8 strings as single-byte strings with ISO-8859-1
    encoding */
 static enum HPCS_ParseCode read_date(FILE* datafile, struct HPCS_Date* date)
