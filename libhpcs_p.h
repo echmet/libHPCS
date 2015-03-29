@@ -144,6 +144,7 @@ static enum HPCS_ParseCode read_signal(FILE* datafile, struct HPCS_TVPair** pair
 				       const HPCS_step step, const double sampling_rate);
 static enum HPCS_ParseCode read_sampling_rate(FILE* datafile, double* sampling_rate);
 static enum HPCS_ParseCode read_string_at_offset(FILE* datafile, const HPCS_offset, char** const result);
+static void remove_trailing_newline(HPCS_NChar* s);
 
 /** Platform-specific functions */
 #ifdef _WIN32
