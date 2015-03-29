@@ -1,3 +1,7 @@
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "include/libhpcs.h"
 #include "libhpcs_p.h"
 
@@ -14,10 +18,6 @@
 #include <Shlwapi.h>
 #else
 #include <unicode/ustdio.h>
-#endif
-
-#ifdef __cplusplus
-extern "C" {
 #endif
 
 #include <stdlib.h>
