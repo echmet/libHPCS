@@ -1,3 +1,6 @@
+#ifndef LIBHPCS_H
+#define LIBHPCS_H
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -85,8 +88,11 @@ LIBHPCS_API void LIBHPCS_CC hpcs_free_mdata(struct HPCS_MeasuredData* const mdat
 LIBHPCS_API void LIBHPCS_CC hpcs_free_minfo(struct HPCS_MethodInfo* const minfo);
 LIBHPCS_API const char* LIBHPCS_CC hpcs_error_to_string(const enum HPCS_RetCode);
 LIBHPCS_API enum HPCS_RetCode LIBHPCS_CC hpcs_read_mdata(const char* filename, struct HPCS_MeasuredData* mdata);
+LIBHPCS_API enum HPCS_RetCode LIBHPCS_CC hpcs_read_mheader(const char* filename, struct HPCS_MeasuredData* mdata);
 LIBHPCS_API enum HPCS_RetCode LIBHPCS_CC hpcs_read_minfo(const char* filename, struct HPCS_MethodInfo* minfo);
 
 #ifdef __cplusplus
 }
 #endif
+
+#endif /* LIBHPCS_H */

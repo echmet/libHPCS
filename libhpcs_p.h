@@ -1,3 +1,6 @@
+#ifndef LIBHPCS_P_H
+#define LIBHCPS_P_H
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -139,6 +142,7 @@ static enum HPCS_ParseCode parse_native_method_info_line(char** name, char** val
 static enum HPCS_ParseCode read_dad_wavelength(FILE* datafile, struct HPCS_Wavelength* const measured, struct HPCS_Wavelength* const reference);
 static uint8_t month_to_number(const char* month);
 static enum HPCS_ParseCode read_date(FILE* datafile, struct HPCS_Date* date);
+static enum HPCS_ParseCode read_file_header(FILE* datafile, struct HPCS_MeasuredData* mdata);
 static enum HPCS_ParseCode read_method_info_file(HPCS_UFH fh, struct HPCS_MethodInfo* minfo);
 static enum HPCS_ParseCode read_signal(FILE* datafile, struct HPCS_TVPair** pairs, size_t* pairs_count,
 				       const HPCS_step step, const double sampling_rate);
@@ -202,3 +206,5 @@ void reverse_endianness(char* bytes, size_t sz) {
 #ifdef __cplusplus
 }
 #endif
+
+#endif /* LIBHCPS_P_H */

@@ -4,7 +4,7 @@
 #include <string.h>
 #include "include/libhpcs.h"
 
-int read_data(const char* path)
+static int read_data(const char* path)
 {
 	struct HPCS_MeasuredData* mdata;
 	enum HPCS_RetCode hret;
@@ -39,7 +39,42 @@ int read_data(const char* path)
 	return EXIT_SUCCESS;
 }
 
-int read_info(const char* path)
+static int read_header(const char* path)
+{
+	struct HPCS_MeasuredData* mdata;
+	enum HPCS_RetCode hret;
+
+	mdata = hpcs_alloc_mdata();
+	if (mdata == NULL) {
+		printf("Out of memory\n");
+		return EXIT_FAILURE;
+	}
+
+	hret = hpcs_read_mheader(path, mdata);
+	if (hret != HPCS_OK) {
+		printf("Cannot parse file: %s\n", hpcs_error_to_string(hret));
+		return EXIT_FAILURE;
+	}
+
+	printf("Sample info: %s\n"
+		  "Operator name: %s\n"
+		  "Method name: %s\n"
+		  "Y units: %s\n"
+		  "Sampling rate: %f\n"
+		  "File description: %s\n",
+		  mdata->sample_info,
+		  mdata->operator_name,
+		  mdata->method_name,
+		  mdata->y_units,
+		  mdata->sampling_rate,
+		  mdata->file_description);
+
+	hpcs_free_mdata(mdata);
+
+	return EXIT_SUCCESS;
+}
+
+static int read_info(const char* path)
 {
 	struct HPCS_MethodInfo* minfo;
 	enum HPCS_RetCode hret;
@@ -74,12 +109,15 @@ int main(int argc, char** argv)
 		printf("Usage: test_tool MODE FILE\n");
 		printf("MODE: d - read data file\n"
 		       "      i - method info\n"
+		       "      h - read header only\n"
 		       "FILE: path\n");
 		return EXIT_FAILURE;
 	}
 
 	if (strcmp(argv[1], "d") == 0)
 		return read_data(argv[2]);
+	else if (strcmp(argv[1], "h") == 0)
+		return read_header(argv[2]);
 	else if (strcmp(argv[1], "i") == 0)
 		return read_info(argv[2]);
 	else {

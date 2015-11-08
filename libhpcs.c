@@ -104,6 +104,62 @@ void hpcs_free_minfo(struct HPCS_MethodInfo* const minfo)
 
 enum HPCS_RetCode hpcs_read_mdata(const char* filename, struct HPCS_MeasuredData* mdata)
 {
+    FILE* datafile;
+    enum HPCS_ParseCode pret;
+    enum HPCS_RetCode ret;
+
+    if (mdata == NULL)
+		return HPCS_E_NULLPTR;
+
+    datafile = fopen(filename, "rb");
+    if (datafile == NULL)
+		return HPCS_E_CANT_OPEN;
+
+    pret = read_file_header(datafile, mdata);
+    if (pret != PARSE_OK) {
+		PR_DEBUG("Cannot read the header\n");
+		ret = HPCS_E_PARSE_ERROR;
+		goto out;
+    }
+
+    switch (mdata->file_type) {
+	case HPCS_TYPE_CE_CCD:
+	    pret = read_signal(datafile, &mdata->data, &mdata->data_count, CE_CCD_STEP, mdata->sampling_rate);
+	    break;
+	case HPCS_TYPE_CE_CURRENT:
+	    pret = read_signal(datafile, &mdata->data, &mdata->data_count, guess_current_step(mdata), mdata->sampling_rate);
+	    break;
+	case HPCS_TYPE_CE_DAD:
+	    pret = read_signal(datafile, &mdata->data, &mdata->data_count, CE_DAD_STEP, mdata->sampling_rate);
+	    break;
+	case HPCS_TYPE_CE_POWER:
+	case HPCS_TYPE_CE_VOLTAGE:
+	    pret = read_signal(datafile, &mdata->data, &mdata->data_count, guess_elec_sigstep(mdata), mdata->sampling_rate);
+	    break;
+	case HPCS_TYPE_CE_PRESSURE:
+	    pret = read_signal(datafile, &mdata->data, &mdata->data_count, CE_WORK_PARAM_STEP, mdata->sampling_rate);
+	    break;
+	case HPCS_TYPE_CE_TEMPERATURE:
+	    pret = read_signal(datafile, &mdata->data, &mdata->data_count, CE_WORK_PARAM_OLD_STEP * 10.0, mdata->sampling_rate);
+	    break;
+	case HPCS_TYPE_UNKNOWN:
+	    ret = HPCS_E_UNKNOWN_TYPE;
+	    goto out;
+    }
+
+    if (pret != PARSE_OK) {
+	PR_DEBUG("Cannot parse data in the file\n");
+	ret = HPCS_E_PARSE_ERROR;
+    }
+    else
+	ret = HPCS_OK;
+out:
+	fclose(datafile);
+	return ret;
+}
+
+enum HPCS_RetCode hpcs_read_mheader(const char* filename, struct HPCS_MeasuredData* mdata)
+{
         FILE* datafile;
 	enum HPCS_ParseCode pret;
 	enum HPCS_RetCode ret;
@@ -115,110 +171,12 @@ enum HPCS_RetCode hpcs_read_mdata(const char* filename, struct HPCS_MeasuredData
 	if (datafile == NULL)
 		return HPCS_E_CANT_OPEN;
 
-	pret = read_string_at_offset(datafile, DATA_OFFSET_FILE_DESC, &mdata->file_description);
-	if (pret != PARSE_OK) {
-		PR_DEBUG("Cannot read file description\n");
+	pret = read_file_header(datafile, mdata);
+	if (pret != PARSE_OK)
 		ret = HPCS_E_PARSE_ERROR;
-		goto out;
-	}
-	pret = read_string_at_offset(datafile, DATA_OFFSET_SAMPLE_INFO, &mdata->sample_info);
-	if (pret != PARSE_OK) {
-		PR_DEBUG("Cannot read sample info\n");
-		ret = HPCS_E_PARSE_ERROR;
-		goto out;
-	}
-	pret = read_string_at_offset(datafile, DATA_OFFSET_OPERATOR_NAME, &mdata->operator_name);
-	if (pret != PARSE_OK) {
-		PR_DEBUG("Cannot read operator name\n");
-		ret = HPCS_E_PARSE_ERROR;
-		goto out;
-	}
-	pret = read_string_at_offset(datafile, DATA_OFFSET_METHOD_NAME, &mdata->method_name);
-	if (pret != PARSE_OK) {
-		PR_DEBUG("Cannot read method name\n");
-		ret = HPCS_E_PARSE_ERROR;
-		goto out;
-	}
-	pret = read_date(datafile, &mdata->date);
-	if (pret != PARSE_OK) {
-		PR_DEBUG("Cannot read date of measurement\n");
-		ret = HPCS_E_PARSE_ERROR;
-		goto out;
-	}
-	pret = read_string_at_offset(datafile, DATA_OFFSET_CS_VER, &mdata->cs_ver);
-	if (pret != PARSE_OK) {
-		PR_DEBUG("Cannot read ChemStation software version\n");
-		ret = HPCS_E_PARSE_ERROR;
-		goto out;
-	}
-	pret = read_string_at_offset(datafile, DATA_OFFSET_Y_UNITS, &mdata->y_units);
-	if (pret != PARSE_OK) {
-		PR_DEBUG("Cannot read values of Y axis\n");
-		ret = HPCS_E_PARSE_ERROR;
-		goto out;
-	}
-	pret = read_string_at_offset(datafile, DATA_OFFSET_CS_REV, &mdata->cs_rev);
-	if (pret != PARSE_OK) {
-		PR_DEBUG("Cannot read ChemStation software revision\n");
-		ret = HPCS_E_PARSE_ERROR;
-		goto out;
-	}
-	pret = read_sampling_rate(datafile, &mdata->sampling_rate);
-	if (pret != PARSE_OK) {
-		PR_DEBUG("Cannot read sampling rate of the file\n");
-		ret = HPCS_E_PARSE_ERROR;
-		goto out;
-	}
-	pret = autodetect_file_type(datafile, &mdata->file_type, guess_p_meaning(mdata));
-	if (pret != PARSE_OK) {
-		PR_DEBUG("Cannot determine the type of file\n");
-		ret = HPCS_E_PARSE_ERROR;
-		goto out;
-	}
-
-	if (mdata->file_type == HPCS_TYPE_CE_DAD) {
-		pret = read_dad_wavelength(datafile, &mdata->dad_wavelength_msr, &mdata->dad_wavelength_ref);
-		if (pret != PARSE_OK && pret != PARSE_W_NO_DATA) {
-			PR_DEBUG("Cannot read wavelength\n");
-			ret = HPCS_E_PARSE_ERROR;
-			goto out;
-		}
-	}
-
-	guess_sampling_rate(mdata);
-
-	switch (mdata->file_type) {
-	case HPCS_TYPE_CE_CCD:
-		pret = read_signal(datafile, &mdata->data, &mdata->data_count, CE_CCD_STEP, mdata->sampling_rate);
-		break;
-	case HPCS_TYPE_CE_CURRENT:
-		pret = read_signal(datafile, &mdata->data, &mdata->data_count, guess_current_step(mdata), mdata->sampling_rate);
-		break;
-	case HPCS_TYPE_CE_DAD:
-		pret = read_signal(datafile, &mdata->data, &mdata->data_count, CE_DAD_STEP, mdata->sampling_rate);
-		break;
-	case HPCS_TYPE_CE_POWER:
-	case HPCS_TYPE_CE_VOLTAGE:
-		pret = read_signal(datafile, &mdata->data, &mdata->data_count, guess_elec_sigstep(mdata), mdata->sampling_rate);
-		break;
-	case HPCS_TYPE_CE_PRESSURE:
-		pret = read_signal(datafile, &mdata->data, &mdata->data_count, CE_WORK_PARAM_STEP, mdata->sampling_rate);
-		break;
-	case HPCS_TYPE_CE_TEMPERATURE:
-		pret = read_signal(datafile, &mdata->data, &mdata->data_count, CE_WORK_PARAM_OLD_STEP * 10.0, mdata->sampling_rate);
-		break;
-	case HPCS_TYPE_UNKNOWN:
-		ret = HPCS_E_UNKNOWN_TYPE;
-		goto out;
-	}
-
-	if (pret != PARSE_OK) {
-		PR_DEBUG("Cannot parse data in the file\n");
-		ret = HPCS_E_PARSE_ERROR;
- 	}
 	else
 		ret = HPCS_OK;
-out:
+
 	fclose(datafile);
 	return ret;
 }
@@ -572,6 +530,73 @@ static enum HPCS_ParseCode read_date(FILE* datafile, struct HPCS_Date* date)
 	date->second = strtoul(ms_delim + 1, NULL, 10);
 
 	free(date_str);
+	return PARSE_OK;
+}
+
+static enum HPCS_ParseCode read_file_header(FILE* datafile, struct HPCS_MeasuredData* mdata)
+{
+	enum HPCS_ParseCode pret;
+
+	pret = read_string_at_offset(datafile, DATA_OFFSET_FILE_DESC, &mdata->file_description);
+	if (pret != PARSE_OK) {
+	    PR_DEBUG("Cannot read file description\n");
+	    return pret;
+	}
+	pret = read_string_at_offset(datafile, DATA_OFFSET_SAMPLE_INFO, &mdata->sample_info);
+	if (pret != PARSE_OK) {
+	    PR_DEBUG("Cannot read sample info\n");
+	    return pret;
+	}
+	pret = read_string_at_offset(datafile, DATA_OFFSET_OPERATOR_NAME, &mdata->operator_name);
+	if (pret != PARSE_OK) {
+	    PR_DEBUG("Cannot read operator name\n");
+	    return pret;
+	}
+	pret = read_string_at_offset(datafile, DATA_OFFSET_METHOD_NAME, &mdata->method_name);
+	if (pret != PARSE_OK) {
+	    PR_DEBUG("Cannot read method name\n");
+	    return pret;
+	}
+	pret = read_date(datafile, &mdata->date);
+	if (pret != PARSE_OK) {
+	    PR_DEBUG("Cannot read date of measurement\n");
+	    return pret;
+	}
+	pret = read_string_at_offset(datafile, DATA_OFFSET_CS_VER, &mdata->cs_ver);
+	if (pret != PARSE_OK) {
+	    PR_DEBUG("Cannot read ChemStation software version\n");
+	    return pret;
+	}
+	pret = read_string_at_offset(datafile, DATA_OFFSET_Y_UNITS, &mdata->y_units);
+	if (pret != PARSE_OK) {
+	    PR_DEBUG("Cannot read values of Y axis\n");
+	    return pret;
+	}
+	pret = read_string_at_offset(datafile, DATA_OFFSET_CS_REV, &mdata->cs_rev);
+	if (pret != PARSE_OK) {
+	    PR_DEBUG("Cannot read ChemStation software revision\n");
+	    return pret;
+	}
+	pret = read_sampling_rate(datafile, &mdata->sampling_rate);
+	if (pret != PARSE_OK) {
+	    PR_DEBUG("Cannot read sampling rate of the file\n");
+	    return pret;
+	}
+	pret = autodetect_file_type(datafile, &mdata->file_type, guess_p_meaning(mdata));
+	if (pret != PARSE_OK) {
+	    PR_DEBUG("Cannot determine the type of file\n");
+	    return pret;
+	}
+
+	if (mdata->file_type == HPCS_TYPE_CE_DAD) {
+	    pret = read_dad_wavelength(datafile, &mdata->dad_wavelength_msr, &mdata->dad_wavelength_ref);
+	    if (pret != PARSE_OK && pret != PARSE_W_NO_DATA) {
+		PR_DEBUG("Cannot read wavelength\n");
+		return pret;
+	    }
+	}
+
+	guess_sampling_rate(mdata);
 	return PARSE_OK;
 }
 
