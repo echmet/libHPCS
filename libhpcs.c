@@ -38,6 +38,8 @@ struct HPCS_MeasuredData* hpcs_alloc_mdata()
 	mdata->y_units = NULL;
 	mdata->data = NULL;
 
+	mdata->data_count = 0;
+
 	return mdata;
 }
 
