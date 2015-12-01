@@ -133,6 +133,16 @@ enum HPCS_RetCode hpcs_read_mdata(const char* filename, struct HPCS_MeasuredData
 		goto out;
 	}
 
+	pret = read_file_type_description(datafile, &mdata->file_description);
+	if (pret != PARSE_OK)
+		goto out;
+
+	if (!file_type_description_is_readable(mdata->file_description)) {
+		PR_DEBUGF("Incompatible file description: %s\n", mdata->file_description);
+		ret = HPCS_E_INCOMPATIBLE_FILE;
+		goto out;
+	}
+
     pret = read_file_header(datafile, mdata);
     if (pret != PARSE_OK) {
 		PR_DEBUG("Cannot read the header\n");
@@ -199,6 +209,16 @@ enum HPCS_RetCode hpcs_read_mheader(const char* filename, struct HPCS_MeasuredDa
 
 	if (!gentype_is_readable(gentype)) {
 		PR_DEBUGF("%s: %d\n", "Incompatible file type", gentype);
+		ret = HPCS_E_INCOMPATIBLE_FILE;
+		goto out;
+	}
+
+	pret = read_file_type_description(datafile, &mdata->file_description);
+	if (pret != PARSE_OK)
+		goto out;
+
+	if (!file_type_description_is_readable(mdata->file_description)) {
+		PR_DEBUGF("Incompatible file description: %s\n", mdata->file_description);
 		ret = HPCS_E_INCOMPATIBLE_FILE;
 		goto out;
 	}
@@ -276,6 +296,14 @@ static enum HPCS_DataCheckCode check_for_marker(const char* segment, size_t* con
 		return DCHECK_GOT_MARKER;
 	} else
 		return DCHECK_NO_MARKER;
+}
+
+static bool file_type_description_is_readable(const char*const description)
+{
+	if (!strcmp(FILE_DESC_LC_DATA_FILE, description))
+		return true;
+	else
+		return false;
 }
 
 static bool gentype_is_readable(const enum HPCS_GenType gentype)
@@ -624,11 +652,6 @@ static enum HPCS_ParseCode read_file_header(FILE* datafile, struct HPCS_Measured
 {
 	enum HPCS_ParseCode pret;
 
-	pret = read_string_at_offset(datafile, DATA_OFFSET_FILE_DESC, &mdata->file_description);
-	if (pret != PARSE_OK) {
-	    PR_DEBUG("Cannot read file description\n");
-	    return pret;
-	}
 	pret = read_string_at_offset(datafile, DATA_OFFSET_SAMPLE_INFO, &mdata->sample_info);
 	if (pret != PARSE_OK) {
 	    PR_DEBUG("Cannot read sample info\n");
@@ -685,6 +708,17 @@ static enum HPCS_ParseCode read_file_header(FILE* datafile, struct HPCS_Measured
 
 	guess_sampling_rate(mdata);
 	return PARSE_OK;
+}
+
+static enum HPCS_ParseCode read_file_type_description(FILE* datafile, char** const description)
+{
+	enum HPCS_ParseCode pret;
+
+	pret = read_string_at_offset(datafile, DATA_OFFSET_FILE_DESC, description);
+	if (pret != PARSE_OK)
+		PR_DEBUG("Cannot read file description\n");
+
+	return pret;
 }
 
 static enum HPCS_ParseCode read_method_info_file(HPCS_UFH fh, struct HPCS_MethodInfo* minfo)

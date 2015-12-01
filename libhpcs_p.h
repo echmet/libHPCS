@@ -118,6 +118,9 @@ enum HPCS_GenType {
 	GENTYPE_ADC_UV2 = 131
 };
 
+/* Known file descriptions */
+const char FILE_DESC_LC_DATA_FILE[] = "LC DATA FILE";
+
 /* Known ChemStation format versions */
 const char CHEMSTAT_VER_B0625[] = "B.06.25 [0003]";
 
@@ -153,6 +156,7 @@ static HPCS_step guess_current_step(const struct HPCS_MeasuredData* mdata);
 static HPCS_step guess_elec_sigstep(const struct HPCS_MeasuredData *mdata);
 static bool guess_p_meaning(const struct HPCS_MeasuredData* mdata);
 static void guess_sampling_rate(struct HPCS_MeasuredData* mdata);
+static bool file_type_description_is_readable(const char*const description);
 static enum HPCS_ParseCode next_native_line(HPCS_UFH fh, HPCS_NChar* line, int32_t length);
 static HPCS_UFH open_data_file(const char* filename);
 static enum HPCS_ParseCode parse_native_method_info_line(char** name, char** value, HPCS_NChar* line);
@@ -160,6 +164,7 @@ static enum HPCS_ParseCode read_dad_wavelength(FILE* datafile, struct HPCS_Wavel
 static uint8_t month_to_number(const char* month);
 static enum HPCS_ParseCode read_date(FILE* datafile, struct HPCS_Date* date);
 static enum HPCS_ParseCode read_file_header(FILE* datafile, struct HPCS_MeasuredData* mdata);
+static enum HPCS_ParseCode read_file_type_description(FILE* datafile, char** const description);
 static enum HPCS_ParseCode read_generic_type(FILE* datafile, enum HPCS_GenType* gentype);
 static enum HPCS_ParseCode read_method_info_file(HPCS_UFH fh, struct HPCS_MethodInfo* minfo);
 static enum HPCS_ParseCode read_signal(FILE* datafile, struct HPCS_TVPair** pairs, size_t* pairs_count,
