@@ -130,7 +130,7 @@ enum HPCS_ChemStationVer {
 
 /* Known ChemStation format versions */
 const char CHEMSTAT_B0625_STR[] = "B.06.25 [0003]";
-const char CHEMSTAT_B0626_STR[] = "B.06.25 [0010]";
+const char CHEMSTAT_B0626_STR[] = "B.06.26 [0010]";
 
 /* Values of markers found in .ch files */
 const char BIN_MARKER_A = 0x10;

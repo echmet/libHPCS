@@ -303,13 +303,22 @@ static enum HPCS_DataCheckCode check_for_marker(const char* segment, size_t* con
 
 static enum HPCS_ChemStationVer detect_chemstation_version(const char*const version_string)
 {
-	if (!strcmp(version_string, CHEMSTAT_B0625_STR))
-		return CHEMSTAT_B0625;
-	else if (!strcmp(version_string, CHEMSTAT_B0625_STR))
-		return CHEMSTAT_B0626;
-	else if (strlen(version_string) == 0)
-		return CHEMSTAT_UNTAGGED;
+	PR_DEBUGF("ChemStation ersion string: %s\n", version_string);
 
+	if (!strcmp(version_string, CHEMSTAT_B0625_STR)) {
+		PR_DEBUG("ChemStation B.06.25\n");
+		return CHEMSTAT_B0625;
+	}
+	else if (!strcmp(version_string, CHEMSTAT_B0626_STR)) {
+		PR_DEBUG("ChemStation B.06.26\n");
+		return CHEMSTAT_B0626;
+	}
+	else if (strlen(version_string) == 0) {
+		PR_DEBUG("ChemStation Untagged\n");
+		return CHEMSTAT_UNTAGGED;
+	}
+
+	PR_DEBUG("Unknown ChemStation version\n");
 	return CHEMSTAT_UNKNOWN;
 }
 
@@ -330,52 +339,6 @@ static bool gentype_is_readable(const enum HPCS_GenType gentype)
 	default:
 		return false;
 	}
-}
-
-static enum HPCS_ParseCode read_generic_type(FILE* datafile, enum HPCS_GenType* gentype)
-{
-	enum HPCS_ParseCode ret;
-	uint8_t len;
-	char* gentype_str;
-
-	fseek(datafile, DATA_OFFSET_GENTYPE, SEEK_SET);
-	if (feof(datafile))
-		return PARSE_E_OUT_OF_RANGE;
-	if (ferror(datafile))
-		return PARSE_E_CANT_READ;
-
-	if (fread(&len, SMALL_SEGMENT_SIZE, 1, datafile) < SMALL_SEGMENT_SIZE)
-		return PARSE_E_CANT_READ;
-
-	gentype_str = malloc((sizeof(char) * len) + 1);
-	if (gentype_str == NULL)
-		return PARSE_E_NO_MEM;
-
-	if (fread(gentype_str, SMALL_SEGMENT_SIZE, len, datafile) < SMALL_SEGMENT_SIZE * len) {
-		ret = PARSE_E_CANT_READ;
-		goto out;
-	}
-
-	if (feof(datafile)) {
-		ret = PARSE_E_OUT_OF_RANGE;
-		goto out;
-	}
-	if (ferror(datafile)) {
-		ret = PARSE_E_CANT_READ;
-		goto out;
-	}
-
-	gentype_str[len] = '\0';
-
-	PR_DEBUGF("Generic type: %s\n", gentype_str);
-
-	*gentype = strtol(gentype_str, NULL, 10);
-	ret = PARSE_OK;
-
-out:
-	free(gentype_str);
-
-	return ret;
 }
 
 static HPCS_step guess_current_step(const enum HPCS_ChemStationVer version)
@@ -750,7 +713,7 @@ static enum HPCS_ParseCode read_file_header(FILE* datafile, enum HPCS_ChemStatio
 	    return pret;
 	}
 
-	*cs_ver =  detect_chemstation_version(mdata->cs_rev);
+	*cs_ver =  detect_chemstation_version(mdata->cs_ver);
 	if (pret != PARSE_OK) {
 		PR_DEBUG("Cannot detect ChemStation version\n");
 		return pret;
@@ -824,6 +787,52 @@ static enum HPCS_ParseCode read_method_info_file(HPCS_UFH fh, struct HPCS_Method
 	}
 
 	return PARSE_OK;
+}
+
+static enum HPCS_ParseCode read_generic_type(FILE* datafile, enum HPCS_GenType* gentype)
+{
+	enum HPCS_ParseCode ret;
+	uint8_t len;
+	char* gentype_str;
+
+	fseek(datafile, DATA_OFFSET_GENTYPE, SEEK_SET);
+	if (feof(datafile))
+		return PARSE_E_OUT_OF_RANGE;
+	if (ferror(datafile))
+		return PARSE_E_CANT_READ;
+
+	if (fread(&len, SMALL_SEGMENT_SIZE, 1, datafile) < SMALL_SEGMENT_SIZE)
+		return PARSE_E_CANT_READ;
+
+	gentype_str = malloc((sizeof(char) * len) + 1);
+	if (gentype_str == NULL)
+		return PARSE_E_NO_MEM;
+
+	if (fread(gentype_str, SMALL_SEGMENT_SIZE, len, datafile) < SMALL_SEGMENT_SIZE * len) {
+		ret = PARSE_E_CANT_READ;
+		goto out;
+	}
+
+	if (feof(datafile)) {
+		ret = PARSE_E_OUT_OF_RANGE;
+		goto out;
+	}
+	if (ferror(datafile)) {
+		ret = PARSE_E_CANT_READ;
+		goto out;
+	}
+
+	gentype_str[len] = '\0';
+
+	PR_DEBUGF("Generic type: %s\n", gentype_str);
+
+	*gentype = strtol(gentype_str, NULL, 10);
+	ret = PARSE_OK;
+
+out:
+	free(gentype_str);
+
+	return ret;
 }
 
 static enum HPCS_ParseCode read_signal(FILE* datafile, struct HPCS_TVPair** pairs, size_t* pairs_count,
