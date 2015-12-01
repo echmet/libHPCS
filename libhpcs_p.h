@@ -91,6 +91,7 @@ const HPCS_step CE_WORK_PARAM_OLD_STEP = 0.000083333333;
 const double CE_WORK_PARAM_SAMPRATE = 1.67;
 
 /* Offsets containing data of interest in .ch files */
+const HPCS_offset DATA_OFFSET_GENTYPE = 0x000;
 const HPCS_offset DATA_OFFSET_FILE_DESC = 0x15B;
 const HPCS_offset DATA_OFFSET_SAMPLE_INFO = 0x35A;
 const HPCS_offset DATA_OFFSET_OPERATOR_NAME = 0x758;
@@ -102,6 +103,20 @@ const HPCS_offset DATA_OFFSET_SAMPLING_RATE = 0x101C;
 const HPCS_offset DATA_OFFSET_Y_UNITS = 0x104C;
 const HPCS_offset DATA_OFFSET_DEVSIG_INFO = 0x1075;
 const HPCS_offset DATA_OFFSET_DATA_START = 0x1800;
+
+/* General data file types */
+enum HPCS_GenType {
+	GENTYPE_GC_MS = 2,
+	GENTYPE_ADC_LC = 30,
+	GENTYPE_UV_SPECT = 31,
+	GENTYPE_GC_A = 8,
+	GENTYPE_GC_A2 = 81,
+	GENTYPE_GC_B = 179,
+	GENTYPE_GC_B2 = 180,
+	GENTYPE_GC_B3 = 181,
+	GENTYPE_ADC_LC2 = 130,
+	GENTYPE_ADC_UV2 = 131
+};
 
 /* Known ChemStation format versions */
 const char CHEMSTAT_VER_B0625[] = "B.06.25 [0003]";
@@ -120,6 +135,7 @@ const char HPCS_E_NULLPTR_STR[] = "Null pointer to measured data struct.";
 const char HPCS_E_CANT_OPEN_STR[] = "Cannot open the specified file.";
 const char HPCS_E_PARSE_ERROR_STR[] = "Cannot parse the specified file, it might be corrupted or of unknown type.";
 const char HPCS_E_UNKNOWN_TYPE_STR[] = "The specified file contains an unknown type of measurement.";
+const char HPCS_E_INCOMPATIBLE_FILE_STR[] = "The specified file is of type that is unreadable by libHPCS.";
 const char HPCS_E__UNKNOWN_EC_STR[] = "Unknown error code.";
 
 #ifdef _WIN32
@@ -132,6 +148,7 @@ UChar* CR_LF;
 
 static enum HPCS_ParseCode autodetect_file_type(FILE* datafile, enum HPCS_FileType* file_type, const bool p_means_pressure);
 static enum HPCS_DataCheckCode check_for_marker(const char* segment, size_t* const next_marker_idx);
+static bool gentype_is_readable(const enum HPCS_GenType gentype);
 static HPCS_step guess_current_step(const struct HPCS_MeasuredData* mdata);
 static HPCS_step guess_elec_sigstep(const struct HPCS_MeasuredData *mdata);
 static bool guess_p_meaning(const struct HPCS_MeasuredData* mdata);
@@ -143,6 +160,7 @@ static enum HPCS_ParseCode read_dad_wavelength(FILE* datafile, struct HPCS_Wavel
 static uint8_t month_to_number(const char* month);
 static enum HPCS_ParseCode read_date(FILE* datafile, struct HPCS_Date* date);
 static enum HPCS_ParseCode read_file_header(FILE* datafile, struct HPCS_MeasuredData* mdata);
+static enum HPCS_ParseCode read_generic_type(FILE* datafile, enum HPCS_GenType* gentype);
 static enum HPCS_ParseCode read_method_info_file(HPCS_UFH fh, struct HPCS_MethodInfo* minfo);
 static enum HPCS_ParseCode read_signal(FILE* datafile, struct HPCS_TVPair** pairs, size_t* pairs_count,
 				       const HPCS_step step, const double sampling_rate);

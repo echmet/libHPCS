@@ -68,6 +68,8 @@ const char* hpcs_error_to_string(const enum HPCS_RetCode err)
 		return HPCS_E_PARSE_ERROR_STR;
 	case HPCS_E_UNKNOWN_TYPE:
 		return HPCS_E_UNKNOWN_TYPE_STR;
+	case HPCS_E_INCOMPATIBLE_FILE:
+		return HPCS_E_INCOMPATIBLE_FILE_STR;
 	default:
 		return HPCS_E__UNKNOWN_EC_STR;
 	}
@@ -109,6 +111,7 @@ enum HPCS_RetCode hpcs_read_mdata(const char* filename, struct HPCS_MeasuredData
     FILE* datafile;
     enum HPCS_ParseCode pret;
     enum HPCS_RetCode ret;
+	enum HPCS_GenType gentype;
 
     if (mdata == NULL)
 		return HPCS_E_NULLPTR;
@@ -116,6 +119,19 @@ enum HPCS_RetCode hpcs_read_mdata(const char* filename, struct HPCS_MeasuredData
     datafile = fopen(filename, "rb");
     if (datafile == NULL)
 		return HPCS_E_CANT_OPEN;
+
+	pret = read_generic_type(datafile, &gentype);
+	if (pret != PARSE_OK) {
+		PR_DEBUG("Cannot read generic file type\n");
+		ret = HPCS_E_PARSE_ERROR;
+		goto out;
+	}
+
+	if (!gentype_is_readable(gentype)) {
+		PR_DEBUGF("%s: %d\n", "Incompatible file type", gentype);
+		ret = HPCS_E_INCOMPATIBLE_FILE;
+		goto out;
+	}
 
     pret = read_file_header(datafile, mdata);
     if (pret != PARSE_OK) {
@@ -162,9 +178,10 @@ out:
 
 enum HPCS_RetCode hpcs_read_mheader(const char* filename, struct HPCS_MeasuredData* mdata)
 {
-        FILE* datafile;
+	FILE* datafile;
 	enum HPCS_ParseCode pret;
 	enum HPCS_RetCode ret;
+	enum HPCS_GenType gentype;
 
 	if (mdata == NULL)
 		return HPCS_E_NULLPTR;
@@ -173,12 +190,26 @@ enum HPCS_RetCode hpcs_read_mheader(const char* filename, struct HPCS_MeasuredDa
 	if (datafile == NULL)
 		return HPCS_E_CANT_OPEN;
 
+	pret = read_generic_type(datafile, &gentype);
+	if (pret != PARSE_OK) {
+		PR_DEBUG("Cannot read generic file type\n");
+		ret = HPCS_E_PARSE_ERROR;
+		goto out;
+	}
+
+	if (!gentype_is_readable(gentype)) {
+		PR_DEBUGF("%s: %d\n", "Incompatible file type", gentype);
+		ret = HPCS_E_INCOMPATIBLE_FILE;
+		goto out;
+	}
+
 	pret = read_file_header(datafile, mdata);
 	if (pret != PARSE_OK)
 		ret = HPCS_E_PARSE_ERROR;
 	else
 		ret = HPCS_OK;
 
+out:
 	fclose(datafile);
 	return ret;
 }
@@ -247,6 +278,62 @@ static enum HPCS_DataCheckCode check_for_marker(const char* segment, size_t* con
 		return DCHECK_NO_MARKER;
 }
 
+static bool gentype_is_readable(const enum HPCS_GenType gentype)
+{
+	switch (gentype) {
+	case GENTYPE_ADC_LC2:
+		return true;
+	default:
+		return false;
+	}
+}
+
+static enum HPCS_ParseCode read_generic_type(FILE* datafile, enum HPCS_GenType* gentype)
+{
+	enum HPCS_ParseCode ret;
+	uint8_t len;
+	char* gentype_str;
+
+	fseek(datafile, DATA_OFFSET_GENTYPE, SEEK_SET);
+	if (feof(datafile))
+		return PARSE_E_OUT_OF_RANGE;
+	if (ferror(datafile))
+		return PARSE_E_CANT_READ;
+
+	if (fread(&len, SMALL_SEGMENT_SIZE, 1, datafile) < SMALL_SEGMENT_SIZE)
+		return PARSE_E_CANT_READ;
+
+	gentype_str = malloc((sizeof(char) * len) + 1);
+	if (gentype_str == NULL)
+		return PARSE_E_NO_MEM;
+
+	if (fread(gentype_str, SMALL_SEGMENT_SIZE, len, datafile) < SMALL_SEGMENT_SIZE * len) {
+		ret = PARSE_E_CANT_READ;
+		goto out;
+	}
+
+	if (feof(datafile)) {
+		ret = PARSE_E_OUT_OF_RANGE;
+		goto out;
+	}
+	if (ferror(datafile)) {
+		ret = PARSE_E_CANT_READ;
+		goto out;
+	}
+
+	gentype_str[len] = '\0';
+
+	PR_DEBUGF("Generic type: %s\n", gentype_str);
+
+	*gentype = strtol(gentype_str, NULL, 10);
+	ret = PARSE_OK;
+
+out:
+	free(gentype_str);
+
+	return ret;
+}
+
 static HPCS_step guess_current_step(const struct HPCS_MeasuredData* mdata)
 {
 	if (strcmp(mdata->cs_ver, CHEMSTAT_VER_B0625) == 0)
@@ -265,8 +352,6 @@ static HPCS_step guess_elec_sigstep(const struct HPCS_MeasuredData* mdata)
 			return CE_WORK_PARAM_OLD_STEP;
 		}
 	}
-
-
 
 	return CE_WORK_PARAM_STEP;
 }
@@ -885,7 +970,12 @@ static enum HPCS_ParseCode __win32_parse_native_method_info_line(char** name, ch
 	WCHAR* w_value;
 	enum HPCS_ParseCode ret;
 
+#if _MSC_VER >= 1900
+	w_name = wcstok(line, EQUALITY_SIGN, NULL);
+#else
 	w_name = wcstok(line, EQUALITY_SIGN);
+#endif
+
 	if (w_name == NULL)
 		return PARSE_E_NOT_FOUND;
 
@@ -894,7 +984,11 @@ static enum HPCS_ParseCode __win32_parse_native_method_info_line(char** name, ch
 	if (ret != PARSE_OK)
 		return ret;
 
+#if _MSC_VER >= 1900
+	w_value = wcstok(line, EQUALITY_SIGN, NULL);
+#else
 	w_value = wcstok(NULL, EQUALITY_SIGN);
+#endif
 	if (w_value == NULL) {
 		/* Add an empty string if there is no value */
 		*value = malloc(1);
