@@ -844,6 +844,8 @@ static enum HPCS_ParseCode read_signal(FILE* datafile, struct HPCS_TVPair** pair
 	fseek(datafile, DATA_OFFSET_DATA_START, SEEK_SET);
 	if (feof(datafile))
 		return PARSE_E_OUT_OF_RANGE;
+	if (ferror(datafile))
+		return PARSE_E_CANT_READ;
 
 	r = fread(raw, SEGMENT_SIZE, 1, datafile);
 	if (r != 1)
@@ -955,6 +957,8 @@ static enum HPCS_ParseCode read_sampling_rate(FILE* datafile, double* sampling_r
 	fseek(datafile, DATA_OFFSET_SAMPLING_RATE, SEEK_SET);
 	if (feof(datafile))
 		return PARSE_E_OUT_OF_RANGE;
+	if (ferror(datafile))
+		return PARSE_E_CANT_READ;
 
 	r = fread(raw, SEGMENT_SIZE, 1, datafile);
 	if (r != 1)
@@ -977,6 +981,8 @@ static enum HPCS_ParseCode read_string_at_offset(FILE* datafile, const HPCS_offs
 	fseek(datafile, offset, SEEK_SET);
 	if (feof(datafile))
 		return PARSE_E_OUT_OF_RANGE;
+	if (ferror(datafile))
+		return PARSE_E_CANT_READ;
 
 	r = fread(&str_length, SMALL_SEGMENT_SIZE, 1, datafile);
 	if (r != 1)
