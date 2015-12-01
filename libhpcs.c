@@ -135,8 +135,10 @@ enum HPCS_RetCode hpcs_read_mdata(const char* filename, struct HPCS_MeasuredData
 	}
 
 	pret = read_file_type_description(datafile, &mdata->file_description);
-	if (pret != PARSE_OK)
+	if (pret != PARSE_OK) {
+		ret = HPCS_E_PARSE_ERROR;
 		goto out;
+	}
 
 	if (!file_type_description_is_readable(mdata->file_description)) {
 		PR_DEBUGF("Incompatible file description: %s\n", mdata->file_description);
@@ -217,8 +219,10 @@ enum HPCS_RetCode hpcs_read_mheader(const char* filename, struct HPCS_MeasuredDa
 	}
 
 	pret = read_file_type_description(datafile, &mdata->file_description);
-	if (pret != PARSE_OK)
+	if (pret != PARSE_OK) {
+		ret = HPCS_E_PARSE_ERROR;
 		goto out;
+	}
 
 	if (!file_type_description_is_readable(mdata->file_description)) {
 		PR_DEBUGF("Incompatible file description: %s\n", mdata->file_description);
