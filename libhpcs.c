@@ -176,11 +176,12 @@ enum HPCS_RetCode hpcs_read_mdata(const char* filename, struct HPCS_MeasuredData
     }
 
     if (pret != PARSE_OK) {
-	PR_DEBUG("Cannot parse data in the file\n");
-	ret = HPCS_E_PARSE_ERROR;
+		PR_DEBUG("Cannot parse data in the file\n");
+		ret = HPCS_E_PARSE_ERROR;
     }
     else
-	ret = HPCS_OK;
+		ret = HPCS_OK;
+
 out:
 	fclose(datafile);
 	return ret;
@@ -553,8 +554,8 @@ static enum HPCS_ParseCode read_dad_wavelength(FILE* datafile, struct HPCS_Wavel
 	len = interv_idx - start_idx;
 	memcpy(temp, start_idx, len);
 	temp[len] = 0;
-	reference->wavelength = strtoul(temp, NULL, 10);
-	reference->interval = strtoul(interv_idx + 1, NULL, 10);
+	reference->wavelength = (uint16_t)strtoul(temp, NULL, 10);
+	reference->interval = (uint16_t)strtoul(interv_idx + 1, NULL, 10);
 	ret = PARSE_OK;
 
 out2:
@@ -598,7 +599,7 @@ static enum HPCS_ParseCode read_date(FILE* datafile, struct HPCS_Date* date)
 	len = dm_delim - date_str;
 	memcpy(temp, date_str, len);
 	temp[len] = 0;
-	date->day = strtoul(temp, NULL, 10);
+	date->day = (uint8_t)strtoul(temp, NULL, 10);
 
 	/* Get month */
 	my_delim = strchr(dm_delim + 1, DATA_FILE_DASH);
@@ -628,7 +629,7 @@ static enum HPCS_ParseCode read_date(FILE* datafile, struct HPCS_Date* date)
 	len = hm_delim - (date_time_delim + 1);
 	memcpy(temp, date_time_delim + 1, len);
 	temp[len] = 0;
-	date->hour = strtoul(temp, NULL, 10);
+	date->hour = (uint8_t)strtoul(temp, NULL, 10);
 
 	/* Get minute */
 	ms_delim = strchr(hm_delim + 1, DATA_FILE_COLON);
@@ -639,10 +640,10 @@ static enum HPCS_ParseCode read_date(FILE* datafile, struct HPCS_Date* date)
 	len = ms_delim - (hm_delim + 1);
 	memcpy(temp, hm_delim + 1, len);
 	temp[len] = 0;
-	date->minute = strtoul(temp, NULL, 10);
+	date->minute = (uint8_t)strtoul(temp, NULL, 10);
 
 	/* Get second */
-	date->second = strtoul(ms_delim + 1, NULL, 10);
+	date->second = (uint8_t)strtoul(ms_delim + 1, NULL, 10);
 
 	free(date_str);
 	return PARSE_OK;
