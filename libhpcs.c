@@ -112,6 +112,7 @@ enum HPCS_RetCode hpcs_read_mdata(const char* filename, struct HPCS_MeasuredData
     enum HPCS_ParseCode pret;
     enum HPCS_RetCode ret;
 	enum HPCS_GenType gentype;
+	enum HPCS_ChemStationVer cs_ver;
 
     if (mdata == NULL)
 		return HPCS_E_NULLPTR;
@@ -143,7 +144,7 @@ enum HPCS_RetCode hpcs_read_mdata(const char* filename, struct HPCS_MeasuredData
 		goto out;
 	}
 
-    pret = read_file_header(datafile, mdata);
+    pret = read_file_header(datafile, &cs_ver, mdata);
     if (pret != PARSE_OK) {
 		PR_DEBUG("Cannot read the header\n");
 		ret = HPCS_E_PARSE_ERROR;
@@ -155,14 +156,14 @@ enum HPCS_RetCode hpcs_read_mdata(const char* filename, struct HPCS_MeasuredData
 	    pret = read_signal(datafile, &mdata->data, &mdata->data_count, CE_CCD_STEP, mdata->sampling_rate);
 	    break;
 	case HPCS_TYPE_CE_CURRENT:
-	    pret = read_signal(datafile, &mdata->data, &mdata->data_count, guess_current_step(mdata), mdata->sampling_rate);
+	    pret = read_signal(datafile, &mdata->data, &mdata->data_count, guess_current_step(cs_ver), mdata->sampling_rate);
 	    break;
 	case HPCS_TYPE_CE_DAD:
 	    pret = read_signal(datafile, &mdata->data, &mdata->data_count, CE_DAD_STEP, mdata->sampling_rate);
 	    break;
 	case HPCS_TYPE_CE_POWER:
 	case HPCS_TYPE_CE_VOLTAGE:
-	    pret = read_signal(datafile, &mdata->data, &mdata->data_count, guess_elec_sigstep(mdata), mdata->sampling_rate);
+	    pret = read_signal(datafile, &mdata->data, &mdata->data_count, guess_elec_sigstep(cs_ver, mdata->file_type), mdata->sampling_rate);
 	    break;
 	case HPCS_TYPE_CE_PRESSURE:
 	    pret = read_signal(datafile, &mdata->data, &mdata->data_count, CE_WORK_PARAM_STEP, mdata->sampling_rate);
@@ -193,6 +194,7 @@ enum HPCS_RetCode hpcs_read_mheader(const char* filename, struct HPCS_MeasuredDa
 	enum HPCS_ParseCode pret;
 	enum HPCS_RetCode ret;
 	enum HPCS_GenType gentype;
+	enum HPCS_ChemStationVer cs_ver;
 
 	if (mdata == NULL)
 		return HPCS_E_NULLPTR;
@@ -224,7 +226,7 @@ enum HPCS_RetCode hpcs_read_mheader(const char* filename, struct HPCS_MeasuredDa
 		goto out;
 	}
 
-	pret = read_file_header(datafile, mdata);
+	pret = read_file_header(datafile, &cs_ver, mdata);
 	if (pret != PARSE_OK)
 		ret = HPCS_E_PARSE_ERROR;
 	else
@@ -299,6 +301,19 @@ static enum HPCS_DataCheckCode check_for_marker(const char* segment, size_t* con
 		return DCHECK_NO_MARKER;
 }
 
+static enum HPCS_ChemStationVer detect_chemstation_version(const char*const version_string)
+{
+	if (!strcmp(version_string, CHEMSTAT_B0625_STR))
+		return CHEMSTAT_B0625;
+	else if (!strcmp(version_string, CHEMSTAT_B0625_STR))
+		return CHEMSTAT_B0626;
+	else if (strlen(version_string) == 0)
+		return CHEMSTAT_UNTAGGED;
+
+	return CHEMSTAT_UNKNOWN;
+}
+
+
 static bool file_type_description_is_readable(const char*const description)
 {
 	if (!strcmp(FILE_DESC_LC_DATA_FILE, description))
@@ -363,18 +378,18 @@ out:
 	return ret;
 }
 
-static HPCS_step guess_current_step(const struct HPCS_MeasuredData* mdata)
+static HPCS_step guess_current_step(const enum HPCS_ChemStationVer version)
 {
-	if (strcmp(mdata->cs_ver, CHEMSTAT_VER_B0625) == 0)
+	if (version != CHEMSTAT_B0625)
 		return CE_CURRENT_STEP;
 
 	return CE_WORK_PARAM_OLD_STEP * 10.0;
 }
 
-static HPCS_step guess_elec_sigstep(const struct HPCS_MeasuredData* mdata)
+static HPCS_step guess_elec_sigstep(const enum HPCS_ChemStationVer version, const enum HPCS_FileType file_type)
 {
-	if (strcmp(mdata->cs_ver, CHEMSTAT_VER_B0625)) {
-		switch (mdata->file_type) {
+	if (version != CHEMSTAT_B0625) {
+		switch (file_type) {
 		case HPCS_TYPE_CE_POWER:
 			return CE_ENERGY_STEP;
 		default:
@@ -385,17 +400,10 @@ static HPCS_step guess_elec_sigstep(const struct HPCS_MeasuredData* mdata)
 	return CE_WORK_PARAM_STEP;
 }
 
-static bool guess_p_meaning(const struct HPCS_MeasuredData* mdata)
+static void guess_sampling_rate(const enum HPCS_ChemStationVer version, struct HPCS_MeasuredData *mdata)
 {
-	if (strcmp(mdata->cs_ver, CHEMSTAT_VER_B0625) == 0)
-		return false;
-
-	return true;
-}
-
-static void guess_sampling_rate(struct HPCS_MeasuredData* mdata)
-{
-	if (strcmp(mdata->cs_ver, CHEMSTAT_VER_B0625)) {
+	switch (version) {
+	case CHEMSTAT_UNTAGGED:
 		switch (mdata->file_type) {
 		case HPCS_TYPE_CE_DAD:
 			mdata->sampling_rate *= 10;
@@ -403,6 +411,19 @@ static void guess_sampling_rate(struct HPCS_MeasuredData* mdata)
 		default:
 			mdata->sampling_rate = CE_WORK_PARAM_SAMPRATE;
 		}
+		break;
+	case CHEMSTAT_B0626:
+		switch (mdata->file_type) {
+		case HPCS_TYPE_CE_DAD:
+			mdata->sampling_rate /= 100;
+			break;
+		default:
+			mdata->sampling_rate = CE_WORK_PARAM_SAMPRATE;
+			break;
+		}
+		break;
+	default:
+		break;
 	}
 }
 
@@ -452,6 +473,14 @@ static HPCS_UFH open_data_file(const char* filename)
 #else
 	return __unix_open_data_file(filename);
 #endif
+}
+
+static bool p_means_pressure(const enum HPCS_ChemStationVer version)
+{
+	if (version == CHEMSTAT_B0625)
+		return false;
+
+	return true;
 }
 
 static enum HPCS_ParseCode parse_native_method_info_line(char** name, char** value, HPCS_NChar* line)
@@ -676,7 +705,7 @@ static enum HPCS_ParseCode read_date(FILE* datafile, struct HPCS_Date* date)
 	return PARSE_OK;
 }
 
-static enum HPCS_ParseCode read_file_header(FILE* datafile, struct HPCS_MeasuredData* mdata)
+static enum HPCS_ParseCode read_file_header(FILE* datafile, enum HPCS_ChemStationVer* cs_ver, struct HPCS_MeasuredData* mdata)
 {
 	enum HPCS_ParseCode pret;
 
@@ -720,7 +749,14 @@ static enum HPCS_ParseCode read_file_header(FILE* datafile, struct HPCS_Measured
 	    PR_DEBUG("Cannot read sampling rate of the file\n");
 	    return pret;
 	}
-	pret = autodetect_file_type(datafile, &mdata->file_type, guess_p_meaning(mdata));
+
+	*cs_ver =  detect_chemstation_version(mdata->cs_rev);
+	if (pret != PARSE_OK) {
+		PR_DEBUG("Cannot detect ChemStation version\n");
+		return pret;
+	}
+
+	pret = autodetect_file_type(datafile, &mdata->file_type, p_means_pressure(*cs_ver));
 	if (pret != PARSE_OK) {
 	    PR_DEBUG("Cannot determine the type of file\n");
 	    return pret;
@@ -729,12 +765,12 @@ static enum HPCS_ParseCode read_file_header(FILE* datafile, struct HPCS_Measured
 	if (mdata->file_type == HPCS_TYPE_CE_DAD) {
 	    pret = read_dad_wavelength(datafile, &mdata->dad_wavelength_msr, &mdata->dad_wavelength_ref);
 	    if (pret != PARSE_OK && pret != PARSE_W_NO_DATA) {
-		PR_DEBUG("Cannot read wavelength\n");
-		return pret;
+			PR_DEBUG("Cannot read wavelength\n");
+			return pret;
 	    }
 	}
 
-	guess_sampling_rate(mdata);
+	guess_sampling_rate(*cs_ver, mdata);
 	return PARSE_OK;
 }
 

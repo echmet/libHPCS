@@ -121,8 +121,16 @@ enum HPCS_GenType {
 /* Known file descriptions */
 const char FILE_DESC_LC_DATA_FILE[] = "LC DATA FILE";
 
+enum HPCS_ChemStationVer {
+	CHEMSTAT_UNTAGGED,
+	CHEMSTAT_B0625,
+	CHEMSTAT_B0626,
+	CHEMSTAT_UNKNOWN
+};
+
 /* Known ChemStation format versions */
-const char CHEMSTAT_VER_B0625[] = "B.06.25 [0003]";
+const char CHEMSTAT_B0625_STR[] = "B.06.25 [0003]";
+const char CHEMSTAT_B0626_STR[] = "B.06.25 [0010]";
 
 /* Values of markers found in .ch files */
 const char BIN_MARKER_A = 0x10;
@@ -151,19 +159,20 @@ UChar* CR_LF;
 
 static enum HPCS_ParseCode autodetect_file_type(FILE* datafile, enum HPCS_FileType* file_type, const bool p_means_pressure);
 static enum HPCS_DataCheckCode check_for_marker(const char* segment, size_t* const next_marker_idx);
+static enum HPCS_ChemStationVer detect_chemstation_version(const char*const version_string);
 static bool gentype_is_readable(const enum HPCS_GenType gentype);
-static HPCS_step guess_current_step(const struct HPCS_MeasuredData* mdata);
-static HPCS_step guess_elec_sigstep(const struct HPCS_MeasuredData *mdata);
-static bool guess_p_meaning(const struct HPCS_MeasuredData* mdata);
-static void guess_sampling_rate(struct HPCS_MeasuredData* mdata);
+static HPCS_step guess_current_step(const enum HPCS_ChemStationVer version);
+static HPCS_step guess_elec_sigstep(const enum HPCS_ChemStationVer version, const enum HPCS_FileType file_type);
+static void guess_sampling_rate(const enum HPCS_ChemStationVer version, struct HPCS_MeasuredData* mdata);
 static bool file_type_description_is_readable(const char*const description);
 static enum HPCS_ParseCode next_native_line(HPCS_UFH fh, HPCS_NChar* line, int32_t length);
 static HPCS_UFH open_data_file(const char* filename);
 static enum HPCS_ParseCode parse_native_method_info_line(char** name, char** value, HPCS_NChar* line);
 static enum HPCS_ParseCode read_dad_wavelength(FILE* datafile, struct HPCS_Wavelength* const measured, struct HPCS_Wavelength* const reference);
 static uint8_t month_to_number(const char* month);
+static bool p_means_pressure(const enum HPCS_ChemStationVer version);
 static enum HPCS_ParseCode read_date(FILE* datafile, struct HPCS_Date* date);
-static enum HPCS_ParseCode read_file_header(FILE* datafile, struct HPCS_MeasuredData* mdata);
+static enum HPCS_ParseCode read_file_header(FILE* datafile, enum HPCS_ChemStationVer* cs_ver, struct HPCS_MeasuredData* mdata);
 static enum HPCS_ParseCode read_file_type_description(FILE* datafile, char** const description);
 static enum HPCS_ParseCode read_generic_type(FILE* datafile, enum HPCS_GenType* gentype);
 static enum HPCS_ParseCode read_method_info_file(HPCS_UFH fh, struct HPCS_MethodInfo* minfo);
