@@ -466,7 +466,7 @@ static enum HPCS_ParseCode parse_native_method_info_line(char** name, char** val
 static enum HPCS_ParseCode read_dad_wavelength(FILE* datafile, struct HPCS_Wavelength* const measured, struct HPCS_Wavelength* const reference)
 {
 	char* start_idx, *interv_idx, *end_idx, *temp, *str;
-	size_t len;
+	size_t len, tmp_len;
 	enum HPCS_ParseCode pret, ret;
 
 	measured->wavelength = 0;
@@ -483,6 +483,7 @@ static enum HPCS_ParseCode read_dad_wavelength(FILE* datafile, struct HPCS_Wavel
 		ret = PARSE_W_NO_DATA;
 		goto out;
 	}
+
 	start_idx += strlen(WAVELENGTH_MEASURED_TEXT);
 	interv_idx = strchr(start_idx, WAVELENGTH_DELIMITER_TEXT);
 	if (interv_idx == NULL) {
@@ -496,6 +497,13 @@ static enum HPCS_ParseCode read_dad_wavelength(FILE* datafile, struct HPCS_Wavel
 		ret = PARSE_E_NOT_FOUND;
 		goto out;
 	}
+
+	if (start_idx >= interv_idx) {
+		PR_DEBUG("start_idx >= interv_idx\n");
+		ret = PARSE_E_CANT_READ;
+		goto out;
+	}
+
 	len = interv_idx - start_idx;
 	temp = malloc(len + 1);
 	if (temp == NULL) {
@@ -505,23 +513,34 @@ static enum HPCS_ParseCode read_dad_wavelength(FILE* datafile, struct HPCS_Wavel
 	}
 	memcpy(temp, start_idx, len);
 	temp[len] = 0;
-	measured->wavelength = strtoul(temp, NULL, 10);
+	measured->wavelength = (uint16_t)strtoul(temp, NULL, 10);
 
 	/* Read MEASURED spectral interval */
-	if (end_idx - interv_idx - 1 > len) {
+	if (interv_idx >= end_idx) {
+		PR_DEBUG("interv_idx >= end_idx\n");
+		ret = PARSE_E_CANT_READ;
+		goto out2;
+	}
+
+	tmp_len = end_idx - interv_idx;
+	if (tmp_len < 1) {
+		PR_DEBUG("end_idx - interv_idx < 1\n");
+		ret = PARSE_E_CANT_READ;
+		goto out2;
+	}
+	if (tmp_len - 1 > len) {
 		free(temp);
-		temp = malloc(end_idx - interv_idx - 1);
+		temp = malloc(tmp_len - 1);
 		if (temp == NULL) {
 			PR_DEBUG("No memory for temporary string\n");
 			ret = PARSE_E_NO_MEM;
 			goto out;
 		}
 	}
-	len = end_idx - interv_idx - 2;
+	len = tmp_len - 2;
 	memcpy(temp, interv_idx + 1, len);
 	temp[len] = 0;
-	measured->interval = strtoul(temp, NULL, 10);
-
+	measured->interval = (uint16_t)strtoul(temp, NULL, 10);
 
 	/* Read REFERENCE wavelength */
 	start_idx = strstr(end_idx, WAVELENGTH_REFERENCE_TEXT);
@@ -542,7 +561,15 @@ static enum HPCS_ParseCode read_dad_wavelength(FILE* datafile, struct HPCS_Wavel
 		ret = PARSE_E_NOT_FOUND;
 		goto out2;
 	}
-	if (interv_idx - start_idx > len + 1) {
+
+	if (start_idx >= interv_idx) {
+		PR_DEBUG("start_idx >= interv_idx\n");
+		ret = PARSE_E_CANT_READ;
+		goto out2;
+	}
+
+	tmp_len = interv_idx - start_idx;
+	if (tmp_len > len + 1) {
 		free(temp);
 		temp = malloc(interv_idx - start_idx + 1);
 		if (temp == NULL) {
