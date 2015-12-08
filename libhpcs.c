@@ -317,6 +317,10 @@ static enum HPCS_ChemStationVer detect_chemstation_version(const char*const vers
 		PR_DEBUG("ChemStation B.06.26\n");
 		return CHEMSTAT_B0626;
 	}
+	else if (!strcmp(version_string, CHEMSTAT_B0643_STR)) {
+		PR_DEBUG("ChemStation B.06.43\n");
+		return CHEMSTAT_B0643;
+	}
 	else if (strlen(version_string) == 0) {
 		PR_DEBUG("ChemStation Untagged\n");
 		return CHEMSTAT_UNTAGGED;
@@ -380,8 +384,10 @@ static void guess_sampling_rate(const enum HPCS_ChemStationVer version, struct H
 		}
 		break;
 	case CHEMSTAT_B0626:
+	case CHEMSTAT_B0643:
 		switch (mdata->file_type) {
 		case HPCS_TYPE_CE_DAD:
+		case HPCS_TYPE_CE_CCD:
 			mdata->sampling_rate /= 100;
 			break;
 		default:

@@ -125,12 +125,14 @@ enum HPCS_ChemStationVer {
 	CHEMSTAT_UNTAGGED,
 	CHEMSTAT_B0625,
 	CHEMSTAT_B0626,
+	CHEMSTAT_B0643,
 	CHEMSTAT_UNKNOWN
 };
 
 /* Known ChemStation format versions */
 const char CHEMSTAT_B0625_STR[] = "B.06.25 [0003]";
 const char CHEMSTAT_B0626_STR[] = "B.06.26 [0010]";
+const char CHEMSTAT_B0643_STR[] = "B.06.43 [0001]";
 
 /* Values of markers found in .ch files */
 const char BIN_MARKER_A = 0x10;
