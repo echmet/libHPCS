@@ -169,6 +169,7 @@ static void guess_sampling_rate(const enum HPCS_ChemStationVer version, struct H
 static bool file_type_description_is_readable(const char*const description);
 static enum HPCS_ParseCode next_native_line(HPCS_UFH fh, HPCS_NChar* line, int32_t length);
 static HPCS_UFH open_data_file(const char* filename);
+static FILE* open_measurement_file(const char* filename);
 static enum HPCS_ParseCode parse_native_method_info_line(char** name, char** value, HPCS_NChar* line);
 static enum HPCS_ParseCode read_dad_wavelength(FILE* datafile, struct HPCS_Wavelength* const measured, struct HPCS_Wavelength* const reference);
 static uint8_t month_to_number(const char* month);
@@ -189,6 +190,7 @@ static void remove_trailing_newline(HPCS_NChar* s);
 static enum HPCS_ParseCode __win32_next_native_line(FILE* fh, WCHAR* line, int32_t length);
 static HPCS_UFH __win32_open_data_file(const char* filename);
 static enum HPCS_ParseCode __win32_parse_native_method_info_line(char** name, char** value, WCHAR* line);
+static bool __win32_utf8_to_wchar(wchar_t** target, const char* s);
 static enum HPCS_ParseCode __win32_wchar_to_utf8(char** target, const WCHAR* s);
 #else
 static void __attribute((constructor)) __unix_hpcs_initialize();

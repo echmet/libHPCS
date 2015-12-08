@@ -117,7 +117,7 @@ enum HPCS_RetCode hpcs_read_mdata(const char* filename, struct HPCS_MeasuredData
     if (mdata == NULL)
 		return HPCS_E_NULLPTR;
 
-    datafile = fopen(filename, "rb");
+    datafile = open_measurement_file(filename);
     if (datafile == NULL)
 		return HPCS_E_CANT_OPEN;
 
@@ -201,7 +201,7 @@ enum HPCS_RetCode hpcs_read_mheader(const char* filename, struct HPCS_MeasuredDa
 	if (mdata == NULL)
 		return HPCS_E_NULLPTR;
 
-	datafile = fopen(filename, "rb");
+	datafile = open_measurement_file(filename);
 	if (datafile == NULL)
 		return HPCS_E_CANT_OPEN;
 
@@ -307,7 +307,7 @@ static enum HPCS_DataCheckCode check_for_marker(const char* segment, size_t* con
 
 static enum HPCS_ChemStationVer detect_chemstation_version(const char*const version_string)
 {
-	PR_DEBUGF("ChemStation ersion string: %s\n", version_string);
+	PR_DEBUGF("ChemStation version string: %s\n", version_string);
 
 	if (!strcmp(version_string, CHEMSTAT_B0625_STR)) {
 		PR_DEBUG("ChemStation B.06.25\n");
@@ -445,6 +445,23 @@ static HPCS_UFH open_data_file(const char* filename)
 	return __win32_open_data_file(filename);
 #else
 	return __unix_open_data_file(filename);
+#endif
+}
+
+static FILE* open_measurement_file(const char* filename)
+{
+#ifdef _WIN32
+	FILE* f;
+	wchar_t *win_filename;
+
+	if (!__win32_utf8_to_wchar(&win_filename, filename))
+		return NULL;
+
+	f = _wfopen(win_filename, L"rb");
+	free(win_filename);
+	return f;
+#else
+	return fopen(filename, "rb");
 #endif
 }
 
@@ -1129,6 +1146,27 @@ static enum HPCS_ParseCode __win32_parse_native_method_info_line(char** name, ch
 	return PARSE_OK;
 }
 
+static bool __win32_utf8_to_wchar(wchar_t** target, const char *s)
+{
+	size_t w_size = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, s, -1, NULL, 0);
+	if (w_size == 0) {
+		PR_DEBUGF("Count MultiByteToWideChar() error 0x%x\n", GetLastError());
+		return false;
+	}
+	PR_DEBUGF("w_size: %d\n", w_size);
+	*target = malloc(sizeof(wchar_t) * w_size);
+	if (*target == NULL)
+		return false;
+
+	if (MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, s, -1, *target, w_size) == 0) {
+		free(*target);
+		PR_DEBUGF("Convert MultiByteToWideChar() error 0x%x\n", GetLastError());
+		return false;
+	}
+
+	return true;
+}
+
 static enum HPCS_ParseCode __win32_wchar_to_utf8(char** target, const WCHAR* s)
 {
 	int mb_size;
@@ -1151,6 +1189,7 @@ static enum HPCS_ParseCode __win32_wchar_to_utf8(char** target, const WCHAR* s)
 
 	return PARSE_OK;
 }
+
 #else
 static void __unix_hpcs_initialize()
 {
