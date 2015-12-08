@@ -1084,7 +1084,7 @@ static FILE* __win32_open_data_file(const char* filename)
 	int w_size;
 
 	/* Get the required size */
-	w_size = MultiByteToWideChar(CP_ACP, MB_PRECOMPOSED, filename, -1, NULL, 0);
+	w_size = MultiByteToWideChar(CP_UTF8, MB_PRECOMPOSED, filename, -1, NULL, 0);
 	if (w_size == 0) {
 		PR_DEBUGF("Count MultiByteToWideChar() error: %x\n", GetLastError());
 		return NULL;
