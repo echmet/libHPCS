@@ -34,3 +34,9 @@ Reporting bugs and incompatibilities
 ---
 
 The author of the library has access only to a subset of Agilent instruments and ChemStation software versions. If you wish to extend libHPCS's support for a new file format, you may get in touch with the author.
+
+Licensing
+---
+
+libHPCS is distributed under The GNU Lesser General Public License v3
+
