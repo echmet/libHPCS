@@ -11,7 +11,7 @@ Build
 
 #### Linux
 
-libHPCS can be built on Linux systems with [CMake](https://cmake.org) build system. To do so, cd to the directory with libHPCS source code and run the following:
+libHPCS can be built on Linux systems with [CMake](https://cmake.org) build system. To do so, `cd` to the directory with libHPCS source code and run the following:
 
 	mkdir build
 	cd build
@@ -31,12 +31,12 @@ Project for Microsoft Visual Studio 2013 is provided; see the **VS2013** subdire
 Usage
 ---
 
-Simple testing tool **test_tool.c** is provided to introduce the library's API. Publicly exported functions and data structures are defined in **include/libHPCS.h** header file. Please note that libHPCS allocates memory for it's data structures by itself. The provided **free()** functions shall be used to reclaim the memory.
+Simple testing tool `test_tool.c` is provided to introduce the library's API. Publicly exported functions and data structures are defined in `include/libHPCS.h` header file. Please note that libHPCS allocates memory for it's data structures by itself. The provided `free()` functions shall be used to reclaim the memory.
 
 Reporting bugs and incompatibilities
 ---
 
-The author of the library has access only to a subset of Agilent instruments and ChemStation software versions. If you wish to extend libHPCS's support for a new file format, you may get in touch with the author.
+The author of the library has access only to a subset of Agilent instruments and ChemStation software versions. If you wish to extend libHPCS' support for a new file format, you may get in touch with the author.
 
 Licensing
 ---
