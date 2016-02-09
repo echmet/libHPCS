@@ -4,7 +4,7 @@ libHPCS
 Introduction
 ---
 
-libHPCS is a simple library that can read electropherogram and chromatogram data written by HP (Agilent) ChemStation software. Information about the format of the data files were obtained through reverse-engineering. Author of the library puts no guarantee on the correctness of the data or on the ability of libHPCS to read a specific datafile. It is strongly recommended that users of the library verify correctness of the data returned by the library.
+libHPCS is a simple library that can read electrophoreogram and chromatogram data written by HP (Agilent) ChemStation software. Information about the format of the data files were obtained through reverse-engineering. Author of the library puts no guarantee on the correctness of the data or on the ability of libHPCS to read a specific datafile. It is strongly recommended that users of the library verify correctness of the data returned by the library.
 
 Build
 ---
