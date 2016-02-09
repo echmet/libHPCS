@@ -1,3 +1,6 @@
+libHPCS
+===
+
 Introduction
 ---
 
@@ -38,5 +41,4 @@ The author of the library has access only to a subset of Agilent instruments and
 Licensing
 ---
 
-libHPCS is distributed under The GNU Lesser General Public License v3
-
+libHPCS is distributed under the terms of [The GNU Lesser General Public License v3](https://www.gnu.org/licenses/gpl-3.0.en.html).
