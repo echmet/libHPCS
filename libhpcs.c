@@ -283,7 +283,7 @@ static enum HPCS_ParseCode autodetect_file_type(FILE* datafile, enum HPCS_FileTy
 	enum HPCS_ParseCode pret;
 	const HPCS_offset devsig_info_offset = OLD_FORMAT(gentype) ? DATA_OFFSET_DEVSIG_INFO_OLD : DATA_OFFSET_DEVSIG_INFO;
 
-	pret = read_string_at_offset(datafile, devsig_info_offset, &type_id, gentype);
+	pret = read_string_at_offset(datafile, devsig_info_offset, &type_id, OLD_FORMAT(gentype));
 	if (pret != PARSE_OK)
 		return pret;
 
@@ -790,7 +790,7 @@ static enum HPCS_ParseCode read_file_header(FILE* datafile, enum HPCS_ChemStatio
 		return pret;
 	}
 
-	pret = autodetect_file_type(datafile, &mdata->file_type, p_means_pressure(*cs_ver), old_format);
+	pret = autodetect_file_type(datafile, &mdata->file_type, p_means_pressure(*cs_ver), gentype);
 	if (pret != PARSE_OK) {
 	    PR_DEBUG("Cannot determine the type of file\n");
 	    return pret;
@@ -1069,6 +1069,8 @@ static enum HPCS_ParseCode __read_string_at_offset_v1(FILE* datafile, const HPCS
 {
 	size_t r;
 	char ch;
+	char* string;
+	enum HPCS_ParseCode ret;
 	size_t str_length = 0;
 
 	fseek(datafile, offset, SEEK_SET);
@@ -1090,21 +1092,28 @@ static enum HPCS_ParseCode __read_string_at_offset_v1(FILE* datafile, const HPCS
 	}
 
 	/* Allocate read buffer */
-	*result = calloc(str_length + 1, SMALL_SEGMENT_SIZE);
-	if (*result == NULL)
+	string = calloc(str_length + 1, SMALL_SEGMENT_SIZE);
+	if (string == NULL)
 		return PARSE_E_NO_MEM;
 
-	memset(*result, 0, (str_length + 1));
+	memset(string, 0, (str_length + 1));
 
 	/* Rewind the file and read the string */
 	fseek(datafile, offset, SEEK_SET);
-	r = fread(*result, SMALL_SEGMENT_SIZE, str_length, datafile);
+	r = fread(string, SMALL_SEGMENT_SIZE, str_length, datafile);
 	if (r < str_length) {
-		free(*result);
+		free(string);
 		return PARSE_E_CANT_READ;
 	}
 
-	return PARSE_OK;
+#ifdef _WIN32
+	ret = __win32_latin1_to_utf8(result, string);
+#else
+	ret = __unix_data_to_utf8(result, string, "ISO-8859-1", str_length);
+#endif
+	free(string);
+
+	return ret;
 }
 
 static enum HPCS_ParseCode __read_string_at_offset_v2(FILE* datafile, const HPCS_offset offset, char** const result)
@@ -1146,7 +1155,7 @@ static enum HPCS_ParseCode __read_string_at_offset_v2(FILE* datafile, const HPCS
 	ret = __win32_wchar_to_utf8(result, (WCHAR*)string);
 #else
 	/* Explicitly convert from UTF-16LE (internal WCHAR representation) */
-	ret = __unix_wchar_to_utf8(result, string, str_length * SEGMENT_SIZE);
+	ret = __unix_data_to_utf8(result, string, "UTF-16LE", str_length * SEGMENT_SIZE);
 #endif
 
 	free(string);
@@ -1243,6 +1252,51 @@ static enum HPCS_ParseCode __win32_parse_native_method_info_line(char** name, ch
 	ret = __win32_wchar_to_utf8(value, w_value);
 	if (ret != PARSE_OK)
 		return ret;
+
+	return PARSE_OK;
+}
+
+static enum HPCS_ParseCode __win32_latin1_to_utf8(char** target, const char *s)
+{
+	wchar_t* intermediate;
+	size_t mb_size;
+
+	size_t w_size = MultiByteToWideChar(28591, MB_ERR_INVALID_CHARS, s, -1, NULL, 0);
+	if (w_size == 0) {
+		PR_DEBUGF("Count MultiByteToWideChar() error 0x%x\n", GetLastError());
+		return PARSE_E_INTERNAL;
+	}
+	PR_DEBUGF("w_size: %d\n", w_size);
+
+	intermediate = malloc(sizeof(wchar_t) * w_size);
+	if (intermediate == NULL)
+		return PARSE_E_NO_MEM;
+
+	size_t w_size = MultiByteToWideChar(28591, MB_ERR_INVALID_CHARS, s, -1, intermediate, 0);
+	if (w_size == 0) {
+		PR_DEBUGF("Convert MultiByteToWideChar() error 0x%x\n", GetLastError());
+		return PARSE_E_INTERNAL;
+	}
+
+	mb_size = WideCharToMultiByte(CP_UTF8, 0, intermediate, -1, NULL, 0, NULL, NULL);
+	if (mb_size == 0) {
+		PR_DEBUGF("Count WideCharToMultiByte() error: 0x%x\n", GetLastError());
+		return PARSE_E_INTERNAL;
+	}
+
+	*target = malloc(mb_size);
+	if (*target == NULL) {
+		free(intermediate);
+		return PARSE_E_NO_MEM;
+	}
+
+	if (WideCharToMultiByte(CP_UTF8, 0, intermediate, -1, *target, mb_size, NULL, NULL) == 0) {
+		free(*target);
+		PR_DEBUGF("Convert WideCharToMultiByte() error: 0x%x\n", GetLastError());
+		return PARSE_E_INTERNAL;
+	}
+
+	free(intermediate)
 
 	return PARSE_OK;
 }
@@ -1395,7 +1449,7 @@ static enum HPCS_ParseCode __unix_parse_native_method_info_line(char** name, cha
 	return PARSE_OK;
 }
 
-static enum HPCS_ParseCode __unix_wchar_to_utf8(char** target, const char* bytes, const size_t bytes_count)
+static enum HPCS_ParseCode __unix_data_to_utf8(char** target, const char* bytes, const char* encoding, const size_t bytes_count)
 {
 	int32_t u_size;
 	UChar* u_str;
@@ -1403,7 +1457,7 @@ static enum HPCS_ParseCode __unix_wchar_to_utf8(char** target, const char* bytes
 	enum HPCS_ParseCode ret;
 	UErrorCode uec = U_ZERO_ERROR;
 
-	cnv = ucnv_open("UTF-16LE", &uec);
+	cnv = ucnv_open(encoding, &uec);
 	if (U_FAILURE(uec)) {
 		PR_DEBUGF("Unable to create converter, error: %s\n", u_errorName(uec));
 		return PARSE_E_INTERNAL;
