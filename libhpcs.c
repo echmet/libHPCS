@@ -134,7 +134,7 @@ enum HPCS_RetCode hpcs_read_mdata(const char* filename, struct HPCS_MeasuredData
 		goto out;
 	}
 
-	pret = read_file_type_description(datafile, &mdata->file_description);
+	pret = read_file_type_description(datafile, &mdata->file_description, gentype);
 	if (pret != PARSE_OK) {
 		ret = HPCS_E_PARSE_ERROR;
 		goto out;
@@ -146,32 +146,49 @@ enum HPCS_RetCode hpcs_read_mdata(const char* filename, struct HPCS_MeasuredData
 		goto out;
 	}
 
-	pret = read_file_header(datafile, &cs_ver, mdata);
+	pret = read_file_header(datafile, &cs_ver, mdata, gentype);
 	if (pret != PARSE_OK) {
 		PR_DEBUG("Cannot read the header\n");
 		ret = HPCS_E_PARSE_ERROR;
 		goto out;
 	}
+	
+	/* Old data formats do not containg sampling rate information, set it manually */
+	if (OLD_FORMAT(gentype)) {
+		switch (mdata->file_type) {
+		case HPCS_TYPE_CE_DAD:
+			mdata->sampling_rate = 20.0;
+			break;
+		case HPCS_TYPE_CE_ANALOG:
+			mdata->sampling_rate = 10.0;
+			break;
+		default:
+			mdata->sampling_rate = CE_WORK_PARAM_SAMPRATE;
+		}
+	}
 
     switch (mdata->file_type) {
+	case HPCS_TYPE_CE_ANALOG:
+	    pret = read_signal(datafile, &mdata->data, &mdata->data_count, CE_WORK_PARAM_OLD_STEP, mdata->sampling_rate, gentype);
+	    break;
 	case HPCS_TYPE_CE_CCD:
-	    pret = read_signal(datafile, &mdata->data, &mdata->data_count, CE_CCD_STEP, mdata->sampling_rate);
+	    pret = read_signal(datafile, &mdata->data, &mdata->data_count, CE_CCD_STEP, mdata->sampling_rate, gentype);
 	    break;
 	case HPCS_TYPE_CE_CURRENT:
-	    pret = read_signal(datafile, &mdata->data, &mdata->data_count, guess_current_step(cs_ver), mdata->sampling_rate);
+	    pret = read_signal(datafile, &mdata->data, &mdata->data_count, guess_current_step(cs_ver, gentype), mdata->sampling_rate, gentype);
 	    break;
 	case HPCS_TYPE_CE_DAD:
-	    pret = read_signal(datafile, &mdata->data, &mdata->data_count, CE_DAD_STEP, mdata->sampling_rate);
+	    pret = read_signal(datafile, &mdata->data, &mdata->data_count, CE_DAD_STEP, mdata->sampling_rate, gentype);
 	    break;
 	case HPCS_TYPE_CE_POWER:
 	case HPCS_TYPE_CE_VOLTAGE:
-	    pret = read_signal(datafile, &mdata->data, &mdata->data_count, guess_elec_sigstep(cs_ver, mdata->file_type), mdata->sampling_rate);
+	    pret = read_signal(datafile, &mdata->data, &mdata->data_count, guess_elec_sigstep(cs_ver, mdata->file_type), mdata->sampling_rate, gentype);
 	    break;
 	case HPCS_TYPE_CE_PRESSURE:
-	    pret = read_signal(datafile, &mdata->data, &mdata->data_count, CE_WORK_PARAM_STEP, mdata->sampling_rate);
+	    pret = read_signal(datafile, &mdata->data, &mdata->data_count, CE_WORK_PARAM_STEP, mdata->sampling_rate, gentype);
 	    break;
 	case HPCS_TYPE_CE_TEMPERATURE:
-	    pret = read_signal(datafile, &mdata->data, &mdata->data_count, CE_WORK_PARAM_OLD_STEP * 10.0, mdata->sampling_rate);
+	    pret = read_signal(datafile, &mdata->data, &mdata->data_count, CE_WORK_PARAM_OLD_STEP * 10.0, mdata->sampling_rate, gentype);
 	    break;
 	case HPCS_TYPE_UNKNOWN:
 	    ret = HPCS_E_UNKNOWN_TYPE;
@@ -218,7 +235,7 @@ enum HPCS_RetCode hpcs_read_mheader(const char* filename, struct HPCS_MeasuredDa
 		goto out;
 	}
 
-	pret = read_file_type_description(datafile, &mdata->file_description);
+	pret = read_file_type_description(datafile, &mdata->file_description, gentype);
 	if (pret != PARSE_OK) {
 		ret = HPCS_E_PARSE_ERROR;
 		goto out;
@@ -230,7 +247,7 @@ enum HPCS_RetCode hpcs_read_mheader(const char* filename, struct HPCS_MeasuredDa
 		goto out;
 	}
 
-	pret = read_file_header(datafile, &cs_ver, mdata);
+	pret = read_file_header(datafile, &cs_ver, mdata, gentype);
 	if (pret != PARSE_OK)
 		ret = HPCS_E_PARSE_ERROR;
 	else
@@ -260,14 +277,24 @@ enum HPCS_RetCode hpcs_read_minfo(const char* filename, struct HPCS_MethodInfo* 
 	return HPCS_OK;
 }
 
-static enum HPCS_ParseCode autodetect_file_type(FILE* datafile, enum HPCS_FileType* file_type, const bool p_means_pressure)
+static enum HPCS_ParseCode autodetect_file_type(FILE* datafile, enum HPCS_FileType* file_type, const bool p_means_pressure, const enum HPCS_GenType gentype)
 {
 	char* type_id;
 	enum HPCS_ParseCode pret;
+	const HPCS_offset devsig_info_offset = OLD_FORMAT(gentype) ? DATA_OFFSET_DEVSIG_INFO_OLD : DATA_OFFSET_DEVSIG_INFO;
 
-	pret = read_string_at_offset(datafile, DATA_OFFSET_DEVSIG_INFO, &type_id);
+	pret = read_string_at_offset(datafile, devsig_info_offset, &type_id, gentype);
 	if (pret != PARSE_OK)
 		return pret;
+
+	if (!strcmp(type_id, FILE_TYPE_ID_ADC_A)) {
+		*file_type = HPCS_TYPE_CE_ANALOG;
+		goto out;
+	}
+	if (!strcmp(type_id, FILE_TYPE_ID_ADC_B)) {
+		*file_type = HPCS_TYPE_CE_ANALOG;
+		goto out;
+	}
 
 	if (strstr(type_id, FILE_TYPE_ID_DAD) == type_id)
 		*file_type = HPCS_TYPE_CE_DAD;
@@ -291,6 +318,7 @@ static enum HPCS_ParseCode autodetect_file_type(FILE* datafile, enum HPCS_FileTy
 	} else
 		*file_type = HPCS_TYPE_UNKNOWN;	
 
+out:
 	free(type_id);
 
 	return PARSE_OK;
@@ -342,6 +370,7 @@ static bool file_type_description_is_readable(const char*const description)
 static bool gentype_is_readable(const enum HPCS_GenType gentype)
 {
 	switch (gentype) {
+	case GENTYPE_ADC_LC:
 	case GENTYPE_ADC_LC2:
 		return true;
 	default:
@@ -349,12 +378,12 @@ static bool gentype_is_readable(const enum HPCS_GenType gentype)
 	}
 }
 
-static HPCS_step guess_current_step(const enum HPCS_ChemStationVer version)
+static HPCS_step guess_current_step(const enum HPCS_ChemStationVer version, const enum HPCS_GenType gentype)
 {
-	if (version != CHEMSTAT_B0625)
-		return CE_CURRENT_STEP;
+	if (version == CHEMSTAT_B0625 || OLD_FORMAT(gentype))
+		return CE_WORK_PARAM_OLD_STEP * 10.0;
 
-	return CE_WORK_PARAM_OLD_STEP * 10.0;
+	return CE_CURRENT_STEP;
 }
 
 static HPCS_step guess_elec_sigstep(const enum HPCS_ChemStationVer version, const enum HPCS_FileType file_type)
@@ -482,17 +511,18 @@ static enum HPCS_ParseCode parse_native_method_info_line(char** name, char** val
 #endif
 }
 
-static enum HPCS_ParseCode read_dad_wavelength(FILE* datafile, struct HPCS_Wavelength* const measured, struct HPCS_Wavelength* const reference)
+static enum HPCS_ParseCode read_dad_wavelength(FILE* datafile, struct HPCS_Wavelength* const measured, struct HPCS_Wavelength* const reference, const enum HPCS_GenType gentype)
 {
 	char* start_idx, *interv_idx, *end_idx, *temp, *str;
 	size_t len, tmp_len;
 	enum HPCS_ParseCode pret, ret;
+	const HPCS_offset devsig_info_offset = OLD_FORMAT(gentype) ? DATA_OFFSET_DEVSIG_INFO_OLD : DATA_OFFSET_DEVSIG_INFO;
 
 	measured->wavelength = 0;
 	measured->interval = 0;
 	reference->wavelength = 0;
 	reference->interval = 0;
-	pret = read_string_at_offset(datafile, DATA_OFFSET_DEVSIG_INFO, &str);
+	pret = read_string_at_offset(datafile, devsig_info_offset, &str, gentype);
 	if (pret != PARSE_OK)
 		return pret;
 
@@ -615,7 +645,7 @@ out:
    first 127 characters from ISO-8859-1 charset. Under such assumption it is
    possible to treat UTF-8 strings as single-byte strings with ISO-8859-1
    encoding */
-static enum HPCS_ParseCode read_date(FILE* datafile, struct HPCS_Date* date)
+static enum HPCS_ParseCode read_date(FILE* datafile, struct HPCS_Date* date, const enum HPCS_GenType gentype)
 {
 	char* date_str;
 	char* date_time_delim;
@@ -624,8 +654,9 @@ static enum HPCS_ParseCode read_date(FILE* datafile, struct HPCS_Date* date)
 	char temp[32];
 	size_t len;
 	enum HPCS_ParseCode pret;
+	const HPCS_offset date_offset = OLD_FORMAT(gentype) ? DATA_OFFSET_DATE_OLD : DATA_OFFSET_DATE;
 
-	pret = read_string_at_offset(datafile, DATA_OFFSET_DATE, &date_str);
+	pret = read_string_at_offset(datafile, date_offset, &date_str, OLD_FORMAT(gentype));
 	if (pret != PARSE_OK)
 		return pret;
 
@@ -695,65 +726,78 @@ static enum HPCS_ParseCode read_date(FILE* datafile, struct HPCS_Date* date)
 	return PARSE_OK;
 }
 
-static enum HPCS_ParseCode read_file_header(FILE* datafile, enum HPCS_ChemStationVer* cs_ver, struct HPCS_MeasuredData* mdata)
+static enum HPCS_ParseCode read_file_header(FILE* datafile, enum HPCS_ChemStationVer* cs_ver, struct HPCS_MeasuredData* mdata, const enum HPCS_GenType gentype)
 {
 	enum HPCS_ParseCode pret;
+	const bool old_format = OLD_FORMAT(gentype);
+	const HPCS_offset sample_info_offset = old_format ? DATA_OFFSET_SAMPLE_INFO_OLD : DATA_OFFSET_SAMPLE_INFO;
+	const HPCS_offset operator_name_offset = old_format ? DATA_OFFSET_OPERATOR_NAME_OLD : DATA_OFFSET_OPERATOR_NAME;
+	const HPCS_offset method_name_offset = old_format ? DATA_OFFSET_METHOD_NAME_OLD : DATA_OFFSET_METHOD_NAME;
+	const HPCS_offset y_units_offset = old_format ? DATA_OFFSET_Y_UNITS_OLD : DATA_OFFSET_Y_UNITS;
 
-	pret = read_string_at_offset(datafile, DATA_OFFSET_SAMPLE_INFO, &mdata->sample_info);
+	pret = read_string_at_offset(datafile, sample_info_offset, &mdata->sample_info, old_format);
 	if (pret != PARSE_OK) {
 	    PR_DEBUG("Cannot read sample info\n");
 	    return pret;
 	}
-	pret = read_string_at_offset(datafile, DATA_OFFSET_OPERATOR_NAME, &mdata->operator_name);
+	pret = read_string_at_offset(datafile, operator_name_offset, &mdata->operator_name, old_format);
 	if (pret != PARSE_OK) {
 	    PR_DEBUG("Cannot read operator name\n");
 	    return pret;
 	}
-	pret = read_string_at_offset(datafile, DATA_OFFSET_METHOD_NAME, &mdata->method_name);
+	pret = read_string_at_offset(datafile, method_name_offset, &mdata->method_name, old_format);
 	if (pret != PARSE_OK) {
 	    PR_DEBUG("Cannot read method name\n");
 	    return pret;
 	}
-	pret = read_date(datafile, &mdata->date);
+	pret = read_date(datafile, &mdata->date, gentype);
 	if (pret != PARSE_OK) {
 	    PR_DEBUG("Cannot read date of measurement\n");
 	    return pret;
 	}
-	pret = read_string_at_offset(datafile, DATA_OFFSET_CS_VER, &mdata->cs_ver);
-	if (pret != PARSE_OK) {
-	    PR_DEBUG("Cannot read ChemStation software version\n");
-	    return pret;
+
+	if (!old_format) {
+		pret = read_string_at_offset(datafile, DATA_OFFSET_CS_VER, &mdata->cs_ver, old_format);
+		if (pret != PARSE_OK) {
+			PR_DEBUG("Cannot read ChemStation software version\n");
+			return pret;
+		}
+		pret = read_string_at_offset(datafile, DATA_OFFSET_CS_REV, &mdata->cs_rev, old_format);
+			if (pret != PARSE_OK) {
+			PR_DEBUG("Cannot read ChemStation software revision\n");
+			return pret;
+		}
+	} else {
+		mdata->cs_ver = DEFAULT_CS_VER;
+		mdata->cs_rev = DEFAULT_CS_REV;
 	}
-	pret = read_string_at_offset(datafile, DATA_OFFSET_Y_UNITS, &mdata->y_units);
+
+	pret = read_string_at_offset(datafile, y_units_offset, &mdata->y_units, old_format);
 	if (pret != PARSE_OK) {
-	    PR_DEBUG("Cannot read values of Y axis\n");
-	    return pret;
+		PR_DEBUG("Cannot read values of Y axis\n");
+		return pret;
 	}
-	pret = read_string_at_offset(datafile, DATA_OFFSET_CS_REV, &mdata->cs_rev);
-	if (pret != PARSE_OK) {
-	    PR_DEBUG("Cannot read ChemStation software revision\n");
-	    return pret;
-	}
-	pret = read_sampling_rate(datafile, &mdata->sampling_rate);
+
+	pret = read_sampling_rate(datafile, &mdata->sampling_rate, old_format);
 	if (pret != PARSE_OK) {
 	    PR_DEBUG("Cannot read sampling rate of the file\n");
 	    return pret;
 	}
 
-	*cs_ver =  detect_chemstation_version(mdata->cs_ver);
+	*cs_ver = detect_chemstation_version(mdata->cs_ver);
 	if (pret != PARSE_OK) {
 		PR_DEBUG("Cannot detect ChemStation version\n");
 		return pret;
 	}
 
-	pret = autodetect_file_type(datafile, &mdata->file_type, p_means_pressure(*cs_ver));
+	pret = autodetect_file_type(datafile, &mdata->file_type, p_means_pressure(*cs_ver), old_format);
 	if (pret != PARSE_OK) {
 	    PR_DEBUG("Cannot determine the type of file\n");
 	    return pret;
 	}
 
 	if (mdata->file_type == HPCS_TYPE_CE_DAD) {
-	    pret = read_dad_wavelength(datafile, &mdata->dad_wavelength_msr, &mdata->dad_wavelength_ref);
+	    pret = read_dad_wavelength(datafile, &mdata->dad_wavelength_msr, &mdata->dad_wavelength_ref, gentype);
 	    if (pret != PARSE_OK && pret != PARSE_W_NO_DATA) {
 			PR_DEBUG("Cannot read wavelength\n");
 			return pret;
@@ -764,11 +808,12 @@ static enum HPCS_ParseCode read_file_header(FILE* datafile, enum HPCS_ChemStatio
 	return PARSE_OK;
 }
 
-static enum HPCS_ParseCode read_file_type_description(FILE* datafile, char** const description)
+static enum HPCS_ParseCode read_file_type_description(FILE* datafile, char** const description, const enum HPCS_GenType gentype)
 {
 	enum HPCS_ParseCode pret;
+	const HPCS_offset offset = OLD_FORMAT(gentype) ? DATA_OFFSET_FILE_DESC_OLD : DATA_OFFSET_FILE_DESC;
 
-	pret = read_string_at_offset(datafile, DATA_OFFSET_FILE_DESC, description);
+	pret = read_string_at_offset(datafile, offset, description, OLD_FORMAT(gentype));
 	if (pret != PARSE_OK)
 		PR_DEBUG("Cannot read file description\n");
 
@@ -863,7 +908,7 @@ out:
 }
 
 static enum HPCS_ParseCode read_signal(FILE* datafile, struct HPCS_TVPair** pairs, size_t* pairs_count,
-				       const HPCS_step step, const double sampling_rate)
+				       const HPCS_step step, const double sampling_rate, const enum HPCS_GenType gentype)
 {
 	const double time_step = 1 / (60 * sampling_rate);
         size_t alloc_size = (size_t)((60 * sampling_rate) + 0.5);
@@ -873,11 +918,12 @@ static enum HPCS_ParseCode read_signal(FILE* datafile, struct HPCS_TVPair** pair
 	size_t segments_read = 0;
 	size_t data_segments_read = 0;
 	size_t next_marker_idx = 0;
+	const HPCS_offset data_start_offset = OLD_FORMAT(gentype) ? DATA_OFFSET_DATA_START_OLD : DATA_OFFSET_DATA_START;
 	char raw[2];
 	size_t r;
 	enum HPCS_DataCheckCode dret;
 
-	fseek(datafile, DATA_OFFSET_DATA_START, SEEK_SET);
+	fseek(datafile, data_start_offset, SEEK_SET);
 	if (feof(datafile))
 		return PARSE_E_OUT_OF_RANGE;
 	if (ferror(datafile))
@@ -984,11 +1030,16 @@ static enum HPCS_ParseCode read_signal(FILE* datafile, struct HPCS_TVPair** pair
 	return PARSE_OK;
 }
 
-static enum HPCS_ParseCode read_sampling_rate(FILE* datafile, double* sampling_rate)
+static enum HPCS_ParseCode read_sampling_rate(FILE* datafile, double* sampling_rate, const bool old_format)
 {
 	char raw[2];
 	uint16_t number;
 	size_t r;
+
+	if (old_format) {
+		*sampling_rate = 0.0; /* This information cannot be read from the datafile */
+		return PARSE_OK;
+	}
 
 	fseek(datafile, DATA_OFFSET_SAMPLING_RATE, SEEK_SET);
 	if (feof(datafile))
@@ -1007,7 +1058,56 @@ static enum HPCS_ParseCode read_sampling_rate(FILE* datafile, double* sampling_r
 	return PARSE_OK;
 }
 
-static enum HPCS_ParseCode read_string_at_offset(FILE* datafile, const HPCS_offset offset, char** const result)
+static enum HPCS_ParseCode read_string_at_offset(FILE* datafile, const HPCS_offset offset, char** const result, const bool old_format)
+{
+	if (old_format)
+		return __read_string_at_offset_v1(datafile, offset, result);
+	return __read_string_at_offset_v2(datafile, offset, result);
+}
+
+static enum HPCS_ParseCode __read_string_at_offset_v1(FILE* datafile, const HPCS_offset offset, char** const result)
+{
+	size_t r;
+	char ch;
+	size_t str_length = 0;
+
+	fseek(datafile, offset, SEEK_SET);
+	if (feof(datafile))
+		return PARSE_E_OUT_OF_RANGE;
+	if (ferror(datafile))
+		return PARSE_E_CANT_READ;
+
+	/* Read the length of the string */
+	while (true) {
+		r = fread(&ch, SMALL_SEGMENT_SIZE, 1, datafile);
+		if (r != 1)
+			return PARSE_E_CANT_READ;
+
+		if (ch != '\0')
+			str_length++;
+		else
+			break;
+	}
+
+	/* Allocate read buffer */
+	*result = calloc(str_length + 1, SMALL_SEGMENT_SIZE);
+	if (*result == NULL)
+		return PARSE_E_NO_MEM;
+
+	memset(*result, 0, (str_length + 1));
+
+	/* Rewind the file and read the string */
+	fseek(datafile, offset, SEEK_SET);
+	r = fread(*result, SMALL_SEGMENT_SIZE, str_length, datafile);
+	if (r < str_length) {
+		free(*result);
+		return PARSE_E_CANT_READ;
+	}
+
+	return PARSE_OK;
+}
+
+static enum HPCS_ParseCode __read_string_at_offset_v2(FILE* datafile, const HPCS_offset offset, char** const result)
 {
 	char* string;
 	uint8_t str_length;
@@ -1048,6 +1148,7 @@ static enum HPCS_ParseCode read_string_at_offset(FILE* datafile, const HPCS_offs
 	/* Explicitly convert from UTF-16LE (internal WCHAR representation) */
 	ret = __unix_wchar_to_utf8(result, string, str_length * SEGMENT_SIZE);
 #endif
+
 	free(string);
 	return ret;
 }
@@ -1340,6 +1441,25 @@ static enum HPCS_ParseCode __unix_wchar_to_utf8(char** target, const char* bytes
 	return ret;
 }
 #endif
+
+
+static char* __DEFAULT_CS_REV()
+{
+	static const char* s = "UNKNOWN_REVISION";
+	char* ns = malloc(strlen(s) + 1);
+	memset(ns, 0, strlen(s) + 1);
+	strcpy(ns, s);
+	return ns;
+}
+
+static char* __DEFAULT_CS_VER()
+{
+	static const char* s = "UNKNOWN_VERSION";
+	char* ns = malloc(strlen(s) + 1);
+	memset(ns, 0, strlen(s) + 1);
+	strcpy(ns, s);
+	return ns;
+}
 
 #ifdef __cplusplus
 }

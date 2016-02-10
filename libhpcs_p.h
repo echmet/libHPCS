@@ -46,8 +46,8 @@ typedef size_t HPCS_offset;
 typedef double HPCS_step;
 typedef size_t HPCS_segsize;
 
-
-/* Identifiers of file types found at offset 0x1075 onward */
+const char FILE_TYPE_ID_ADC_A[] = "ADC CHANNEL A";
+const char FILE_TYPE_ID_ADC_B[] = "ADC CHANNEL B";
 const char FILE_TYPE_ID_DAD[] = "DAD";
 const char FILE_TYPE_ID_HPCE[] = "HPCE";
 const char FILE_TYPE_HPCE_CCD = 'L';
@@ -103,6 +103,15 @@ const HPCS_offset DATA_OFFSET_SAMPLING_RATE = 0x101C;
 const HPCS_offset DATA_OFFSET_Y_UNITS = 0x104C;
 const HPCS_offset DATA_OFFSET_DEVSIG_INFO = 0x1075;
 const HPCS_offset DATA_OFFSET_DATA_START = 0x1800;
+/* Offsets valid of old HP data format */
+const HPCS_offset DATA_OFFSET_FILE_DESC_OLD = 0x005;
+const HPCS_offset DATA_OFFSET_SAMPLE_INFO_OLD = 0x019;
+const HPCS_offset DATA_OFFSET_OPERATOR_NAME_OLD = 0x095;
+const HPCS_offset DATA_OFFSET_DATE_OLD = 0x0B3;
+const HPCS_offset DATA_OFFSET_METHOD_NAME_OLD = 0x0E5;
+const HPCS_offset DATA_OFFSET_Y_UNITS_OLD = 0x245;
+const HPCS_offset DATA_OFFSET_DEVSIG_INFO_OLD = 0x255;
+const HPCS_offset DATA_OFFSET_DATA_START_OLD = 0x400;
 
 /* General data file types */
 enum HPCS_GenType {
@@ -159,11 +168,11 @@ UChar* EQUALITY_SIGN;
 UChar* CR_LF;
 #endif
 
-static enum HPCS_ParseCode autodetect_file_type(FILE* datafile, enum HPCS_FileType* file_type, const bool p_means_pressure);
+static enum HPCS_ParseCode autodetect_file_type(FILE* datafile, enum HPCS_FileType* file_type, const bool p_means_pressure, const enum HPCS_GenType gentype);
 static enum HPCS_DataCheckCode check_for_marker(const char* segment, size_t* const next_marker_idx);
 static enum HPCS_ChemStationVer detect_chemstation_version(const char*const version_string);
 static bool gentype_is_readable(const enum HPCS_GenType gentype);
-static HPCS_step guess_current_step(const enum HPCS_ChemStationVer version);
+static HPCS_step guess_current_step(const enum HPCS_ChemStationVer version, const enum HPCS_GenType gentype);
 static HPCS_step guess_elec_sigstep(const enum HPCS_ChemStationVer version, const enum HPCS_FileType file_type);
 static void guess_sampling_rate(const enum HPCS_ChemStationVer version, struct HPCS_MeasuredData* mdata);
 static bool file_type_description_is_readable(const char*const description);
@@ -171,19 +180,21 @@ static enum HPCS_ParseCode next_native_line(HPCS_UFH fh, HPCS_NChar* line, int32
 static HPCS_UFH open_data_file(const char* filename);
 static FILE* open_measurement_file(const char* filename);
 static enum HPCS_ParseCode parse_native_method_info_line(char** name, char** value, HPCS_NChar* line);
-static enum HPCS_ParseCode read_dad_wavelength(FILE* datafile, struct HPCS_Wavelength* const measured, struct HPCS_Wavelength* const reference);
+static enum HPCS_ParseCode read_dad_wavelength(FILE* datafile, struct HPCS_Wavelength* const measured, struct HPCS_Wavelength* const reference, const enum HPCS_GenType gentype);
 static uint8_t month_to_number(const char* month);
 static bool p_means_pressure(const enum HPCS_ChemStationVer version);
-static enum HPCS_ParseCode read_date(FILE* datafile, struct HPCS_Date* date);
-static enum HPCS_ParseCode read_file_header(FILE* datafile, enum HPCS_ChemStationVer* cs_ver, struct HPCS_MeasuredData* mdata);
-static enum HPCS_ParseCode read_file_type_description(FILE* datafile, char** const description);
+static enum HPCS_ParseCode read_date(FILE* datafile, struct HPCS_Date* date, const enum HPCS_GenType gentype);
+static enum HPCS_ParseCode read_file_header(FILE* datafile, enum HPCS_ChemStationVer* cs_ver, struct HPCS_MeasuredData* mdata, const enum HPCS_GenType gentype);
+static enum HPCS_ParseCode read_file_type_description(FILE* datafile, char** const description, const enum HPCS_GenType gentype);
 static enum HPCS_ParseCode read_generic_type(FILE* datafile, enum HPCS_GenType* gentype);
 static enum HPCS_ParseCode read_method_info_file(HPCS_UFH fh, struct HPCS_MethodInfo* minfo);
 static enum HPCS_ParseCode read_signal(FILE* datafile, struct HPCS_TVPair** pairs, size_t* pairs_count,
-				       const HPCS_step step, const double sampling_rate);
-static enum HPCS_ParseCode read_sampling_rate(FILE* datafile, double* sampling_rate);
-static enum HPCS_ParseCode read_string_at_offset(FILE* datafile, const HPCS_offset, char** const result);
+				       const HPCS_step step, const double sampling_rate, const enum HPCS_GenType gentype);
+static enum HPCS_ParseCode read_sampling_rate(FILE* datafile, double* sampling_rate, const bool old_format);
+static enum HPCS_ParseCode read_string_at_offset(FILE* datafile, const HPCS_offset, char** const result, const bool read_as_wchar);
 static void remove_trailing_newline(HPCS_NChar* s);
+static enum HPCS_ParseCode __read_string_at_offset_v1(FILE* datafile, const HPCS_offset offset, char** const result);
+static enum HPCS_ParseCode __read_string_at_offset_v2(FILE* datafile, const HPCS_offset offset, char** const result);
 
 /** Platform-specific functions */
 #ifdef _WIN32
@@ -200,6 +211,21 @@ static HPCS_UFH __unix_open_data_file(const char* filename);
 static enum HPCS_ParseCode __unix_next_native_line(UFILE* fh, UChar* line, int32_t length);
 static enum HPCS_ParseCode __unix_parse_native_method_info_line(char** name, char** value, UChar* line);
 static enum HPCS_ParseCode __unix_wchar_to_utf8(char** target, const char* bytes, const size_t bytes_count);
+
+static char* __DEFAULT_CS_REV();
+static char* __DEFAULT_CS_VER();
+#define DEFAULT_CS_REV __DEFAULT_CS_REV()
+#define DEFAULT_CS_VER __DEFAULT_CS_VER()
+
+static bool OLD_FORMAT(const enum HPCS_GenType gentype)
+{
+	switch (gentype) {
+	case GENTYPE_ADC_LC2:
+		return false;
+	default:
+		return true;
+	}
+}
 
 #define __ICU_INIT_STRING(dst, s) do { \
 	UChar temp[64]; \

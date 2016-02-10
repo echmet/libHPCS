@@ -17,6 +17,7 @@ extern "C" {
 #endif
 
 enum HPCS_FileType {
+	HPCS_TYPE_CE_ANALOG,
 	HPCS_TYPE_CE_CCD,
 	HPCS_TYPE_CE_CURRENT,
 	HPCS_TYPE_CE_DAD,
