@@ -167,7 +167,7 @@ enum HPCS_RetCode hpcs_read_mdata(const char* filename, struct HPCS_MeasuredData
 		}
 	}
 
-    switch (mdata->file_type) {
+	switch (mdata->file_type) {
 	case HPCS_TYPE_CE_ANALOG:
 	    pret = read_signal(datafile, &mdata->data, &mdata->data_count, CE_WORK_PARAM_OLD_STEP, mdata->sampling_rate, gentype);
 	    break;
@@ -193,13 +193,13 @@ enum HPCS_RetCode hpcs_read_mdata(const char* filename, struct HPCS_MeasuredData
 	case HPCS_TYPE_UNKNOWN:
 	    ret = HPCS_E_UNKNOWN_TYPE;
 	    goto out;
-    }
+	}
 
-    if (pret != PARSE_OK) {
+	if (pret != PARSE_OK) {
 		PR_DEBUG("Cannot parse data in the file\n");
 		ret = HPCS_E_PARSE_ERROR;
-    }
-    else
+	}
+	else
 		ret = HPCS_OK;
 
 out:
