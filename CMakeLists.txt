@@ -29,8 +29,8 @@ include_directories(
 add_library(HPCS SHARED ${libHPCS_SRCS})
 target_link_libraries(HPCS PRIVATE ${ICU_LIBRARIES})
 set_target_properties(HPCS
-		      PROPERTIES VERSION 4.0
-		      SOVERSION 4.0)
+		      PROPERTIES VERSION 5.0
+		      SOVERSION 5.0)
 
 if (${BuildTestTool})
   set(libHPCS_test_SRCS
