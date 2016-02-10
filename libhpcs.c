@@ -1272,8 +1272,7 @@ static enum HPCS_ParseCode __win32_latin1_to_utf8(char** target, const char *s)
 	if (intermediate == NULL)
 		return PARSE_E_NO_MEM;
 
-	size_t w_size = MultiByteToWideChar(28591, MB_ERR_INVALID_CHARS, s, -1, intermediate, 0);
-	if (w_size == 0) {
+	if (MultiByteToWideChar(28591, MB_ERR_INVALID_CHARS, s, -1, intermediate, 0) == 0) {
 		PR_DEBUGF("Convert MultiByteToWideChar() error 0x%x\n", GetLastError());
 		return PARSE_E_INTERNAL;
 	}
@@ -1296,7 +1295,7 @@ static enum HPCS_ParseCode __win32_latin1_to_utf8(char** target, const char *s)
 		return PARSE_E_INTERNAL;
 	}
 
-	free(intermediate)
+	free(intermediate);
 
 	return PARSE_OK;
 }

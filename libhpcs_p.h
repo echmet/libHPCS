@@ -196,12 +196,28 @@ static void remove_trailing_newline(HPCS_NChar* s);
 static enum HPCS_ParseCode __read_string_at_offset_v1(FILE* datafile, const HPCS_offset offset, char** const result);
 static enum HPCS_ParseCode __read_string_at_offset_v2(FILE* datafile, const HPCS_offset offset, char** const result);
 
+static char* __DEFAULT_CS_REV();
+static char* __DEFAULT_CS_VER();
+
+static bool OLD_FORMAT(const enum HPCS_GenType gentype)
+{
+	switch (gentype) {
+	case GENTYPE_ADC_LC2:
+		return false;
+	default:
+		return true;
+	}
+}
+
+#define DEFAULT_CS_REV __DEFAULT_CS_REV()
+#define DEFAULT_CS_VER __DEFAULT_CS_VER()
+
 /** Platform-specific functions */
 #ifdef _WIN32
 static enum HPCS_ParseCode __win32_next_native_line(FILE* fh, WCHAR* line, int32_t length);
 static HPCS_UFH __win32_open_data_file(const char* filename);
 static enum HPCS_ParseCode __win32_parse_native_method_info_line(char** name, char** value, WCHAR* line);
-static enum HPCS_ParseCode __win32_latin1_to_utf8(char** target, const char *s)
+static enum HPCS_ParseCode __win32_latin1_to_utf8(char** target, const char *s);
 static bool __win32_utf8_to_wchar(wchar_t** target, const char* s);
 static enum HPCS_ParseCode __win32_wchar_to_utf8(char** target, const WCHAR* s);
 #else
@@ -213,20 +229,6 @@ static enum HPCS_ParseCode __unix_next_native_line(UFILE* fh, UChar* line, int32
 static enum HPCS_ParseCode __unix_parse_native_method_info_line(char** name, char** value, UChar* line);
 static enum HPCS_ParseCode __unix_data_to_utf8(char** target, const char* bytes, const char* encoding, const size_t bytes_count);
 
-static char* __DEFAULT_CS_REV();
-static char* __DEFAULT_CS_VER();
-#define DEFAULT_CS_REV __DEFAULT_CS_REV()
-#define DEFAULT_CS_VER __DEFAULT_CS_VER()
-
-static bool OLD_FORMAT(const enum HPCS_GenType gentype)
-{
-	switch (gentype) {
-	case GENTYPE_ADC_LC2:
-		return false;
-	default:
-		return true;
-	}
-}
 
 #define __ICU_INIT_STRING(dst, s) do { \
 	UChar temp[64]; \
