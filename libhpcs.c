@@ -108,17 +108,17 @@ void hpcs_free_minfo(struct HPCS_MethodInfo* const minfo)
 
 enum HPCS_RetCode hpcs_read_mdata(const char* filename, struct HPCS_MeasuredData* mdata)
 {
-    FILE* datafile;
-    enum HPCS_ParseCode pret;
-    enum HPCS_RetCode ret;
+	FILE* datafile;
+	enum HPCS_ParseCode pret;
+	enum HPCS_RetCode ret;
 	enum HPCS_GenType gentype;
 	enum HPCS_ChemStationVer cs_ver;
 
-    if (mdata == NULL)
+	if (mdata == NULL)
 		return HPCS_E_NULLPTR;
 
-    datafile = open_measurement_file(filename);
-    if (datafile == NULL)
+	datafile = open_measurement_file(filename);
+	if (datafile == NULL)
 		return HPCS_E_CANT_OPEN;
 
 	pret = read_generic_type(datafile, &gentype);
@@ -146,12 +146,12 @@ enum HPCS_RetCode hpcs_read_mdata(const char* filename, struct HPCS_MeasuredData
 		goto out;
 	}
 
-    pret = read_file_header(datafile, &cs_ver, mdata);
-    if (pret != PARSE_OK) {
+	pret = read_file_header(datafile, &cs_ver, mdata);
+	if (pret != PARSE_OK) {
 		PR_DEBUG("Cannot read the header\n");
 		ret = HPCS_E_PARSE_ERROR;
 		goto out;
-    }
+	}
 
     switch (mdata->file_type) {
 	case HPCS_TYPE_CE_CCD:
