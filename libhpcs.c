@@ -1095,6 +1095,16 @@ static enum HPCS_ParseCode __read_string_at_offset_v1(FILE* datafile, const HPCS
 
 	PR_DEBUGF("String length to read: %lu\n", str_length);
 
+	if (str_length == 0) {
+		*result = malloc(sizeof(char));
+
+		if (*result == NULL)
+			return PARSE_E_NO_MEM;
+
+		(*result)[0] = '\0';
+		return PARSE_OK;
+	}
+
 	/* Allocate read buffer */
 	string = calloc(str_length + 1, SMALL_SEGMENT_SIZE);
 	if (string == NULL)
