@@ -152,7 +152,7 @@ enum HPCS_RetCode hpcs_read_mdata(const char* filename, struct HPCS_MeasuredData
 		ret = HPCS_E_PARSE_ERROR;
 		goto out;
 	}
-	
+
 	/* Old data formats do not containg sampling rate information, set it manually */
 	if (OLD_FORMAT(gentype)) {
 		switch (mdata->file_type) {
@@ -316,7 +316,7 @@ static enum HPCS_ParseCode autodetect_file_type(FILE* datafile, enum HPCS_FileTy
 		else
 			*file_type = HPCS_TYPE_UNKNOWN;
 	} else
-		*file_type = HPCS_TYPE_UNKNOWN;	
+		*file_type = HPCS_TYPE_UNKNOWN;
 
 out:
 	free(type_id);
@@ -1191,7 +1191,7 @@ static void remove_trailing_newline(HPCS_NChar* s)
 	newline = StrStrW(s, CR_LF);
 	if (newline != NULL)
 		*newline = (WCHAR)0;
-#else	
+#else
 	newline = u_strrstr(s, CR_LF);
 	if (newline != NULL)
 		*newline = (UChar)0;
