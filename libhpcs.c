@@ -1143,7 +1143,11 @@ static enum HPCS_ParseCode __read_string_at_offset_v2(FILE* datafile, const HPCS
 
 	if (str_length == 0) {
 		*result = malloc(sizeof(char));
-		*result[0] = 0;
+
+		if (*result == NULL)
+			return PARSE_E_NO_MEM;
+
+		(*result)[0] = '\0';
 		return PARSE_OK;
 	}
 
