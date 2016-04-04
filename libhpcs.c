@@ -737,34 +737,34 @@ static enum HPCS_ParseCode read_file_header(FILE* datafile, enum HPCS_ChemStatio
 
 	pret = read_string_at_offset(datafile, sample_info_offset, &mdata->sample_info, old_format);
 	if (pret != PARSE_OK) {
-	    PR_DEBUG("Cannot read sample info\n");
+	    PR_DEBUGF("%s%d\n", "Cannot read sample info, errno: ", pret);
 	    return pret;
 	}
 	pret = read_string_at_offset(datafile, operator_name_offset, &mdata->operator_name, old_format);
 	if (pret != PARSE_OK) {
-	    PR_DEBUG("Cannot read operator name\n");
+	    PR_DEBUGF("%s%d\n", "Cannot read operator name, errno: ", pret);
 	    return pret;
 	}
 	pret = read_string_at_offset(datafile, method_name_offset, &mdata->method_name, old_format);
 	if (pret != PARSE_OK) {
-	    PR_DEBUG("Cannot read method name\n");
+	    PR_DEBUGF("%s%d\n", "Cannot read method name, errno: ", pret);
 	    return pret;
 	}
 	pret = read_date(datafile, &mdata->date, gentype);
 	if (pret != PARSE_OK) {
-	    PR_DEBUG("Cannot read date of measurement\n");
+	    PR_DEBUGF("%s%d\n", "Cannot read date of measurement, errno: ", pret);
 	    return pret;
 	}
 
 	if (!old_format) {
 		pret = read_string_at_offset(datafile, DATA_OFFSET_CS_VER, &mdata->cs_ver, old_format);
 		if (pret != PARSE_OK) {
-			PR_DEBUG("Cannot read ChemStation software version\n");
+			PR_DEBUGF("%s%d\n", "Cannot read ChemStation software version, errno: ", pret);
 			return pret;
 		}
 		pret = read_string_at_offset(datafile, DATA_OFFSET_CS_REV, &mdata->cs_rev, old_format);
 			if (pret != PARSE_OK) {
-			PR_DEBUG("Cannot read ChemStation software revision\n");
+			PR_DEBUGF("%s%d\n", "Cannot read ChemStation software revision, errno: ", pret);
 			return pret;
 		}
 	} else {
@@ -774,32 +774,32 @@ static enum HPCS_ParseCode read_file_header(FILE* datafile, enum HPCS_ChemStatio
 
 	pret = read_string_at_offset(datafile, y_units_offset, &mdata->y_units, old_format);
 	if (pret != PARSE_OK) {
-		PR_DEBUG("Cannot read values of Y axis\n");
+		PR_DEBUGF("%s%d\n", "Cannot read values of Y axis, errno: ", pret);
 		return pret;
 	}
 
 	pret = read_sampling_rate(datafile, &mdata->sampling_rate, old_format);
 	if (pret != PARSE_OK) {
-	    PR_DEBUG("Cannot read sampling rate of the file\n");
+	    PR_DEBUGF("%s%d\n", "Cannot read sampling rate of the file, errno: ", pret);
 	    return pret;
 	}
 
 	*cs_ver = detect_chemstation_version(mdata->cs_ver);
 	if (pret != PARSE_OK) {
-		PR_DEBUG("Cannot detect ChemStation version\n");
+		PR_DEBUGF("%s%d\n", "Cannot detect ChemStation version, errno: ", pret);
 		return pret;
 	}
 
 	pret = autodetect_file_type(datafile, &mdata->file_type, p_means_pressure(*cs_ver), gentype);
 	if (pret != PARSE_OK) {
-	    PR_DEBUG("Cannot determine the type of file\n");
+	    PR_DEBUGF("%s%d\n", "Cannot determine the type of file, errno: ", pret);
 	    return pret;
 	}
 
 	if (mdata->file_type == HPCS_TYPE_CE_DAD) {
 	    pret = read_dad_wavelength(datafile, &mdata->dad_wavelength_msr, &mdata->dad_wavelength_ref, gentype);
 	    if (pret != PARSE_OK && pret != PARSE_W_NO_DATA) {
-			PR_DEBUG("Cannot read wavelength\n");
+			PR_DEBUGF("%s%d\n", "Cannot read wavelength, errno: ", pret);
 			return pret;
 	    }
 	}
@@ -815,7 +815,7 @@ static enum HPCS_ParseCode read_file_type_description(FILE* datafile, char** con
 
 	pret = read_string_at_offset(datafile, offset, description, OLD_FORMAT(gentype));
 	if (pret != PARSE_OK)
-		PR_DEBUG("Cannot read file description\n");
+		PR_DEBUGF("%s%d\n", "Cannot read file description, errno: ", pret);
 
 	return pret;
 }
@@ -1073,6 +1073,8 @@ static enum HPCS_ParseCode __read_string_at_offset_v1(FILE* datafile, const HPCS
 	enum HPCS_ParseCode ret;
 	size_t str_length = 0;
 
+	PR_DEBUG("Using v1 string read\n");
+
 	fseek(datafile, offset, SEEK_SET);
 	if (feof(datafile))
 		return PARSE_E_OUT_OF_RANGE;
@@ -1090,6 +1092,8 @@ static enum HPCS_ParseCode __read_string_at_offset_v1(FILE* datafile, const HPCS
 		else
 			break;
 	}
+
+	PR_DEBUGF("String length to read: %lu\n", str_length);
 
 	/* Allocate read buffer */
 	string = calloc(str_length + 1, SMALL_SEGMENT_SIZE);
@@ -1123,6 +1127,8 @@ static enum HPCS_ParseCode __read_string_at_offset_v2(FILE* datafile, const HPCS
 	size_t r;
 	enum HPCS_ParseCode ret;
 
+	PR_DEBUG("Using v2 string read\n");
+
 	fseek(datafile, offset, SEEK_SET);
 	if (feof(datafile))
 		return PARSE_E_OUT_OF_RANGE;
@@ -1132,6 +1138,8 @@ static enum HPCS_ParseCode __read_string_at_offset_v2(FILE* datafile, const HPCS
 	r = fread(&str_length, SMALL_SEGMENT_SIZE, 1, datafile);
 	if (r != 1)
 		return PARSE_E_CANT_READ;
+
+	PR_DEBUGF("String length to read: %u\n", str_length);
 
 	if (str_length == 0) {
 		*result = malloc(sizeof(char));
