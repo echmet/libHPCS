@@ -135,6 +135,7 @@ enum HPCS_ChemStationVer {
 	CHEMSTAT_B0625,
 	CHEMSTAT_B0626,
 	CHEMSTAT_B0643,
+	CHEMSTAT_B0644,
 	CHEMSTAT_UNKNOWN
 };
 
@@ -142,6 +143,7 @@ enum HPCS_ChemStationVer {
 const char CHEMSTAT_B0625_STR[] = "B.06.25 [0003]";
 const char CHEMSTAT_B0626_STR[] = "B.06.26 [0010]";
 const char CHEMSTAT_B0643_STR[] = "B.06.43 [0001]";
+const char CHEMSTAT_B0644_STR[] = "B.06.44 [0001]";
 
 /* Values of markers found in .ch files */
 const char BIN_MARKER_A = 0x10;
