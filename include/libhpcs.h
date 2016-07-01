@@ -12,7 +12,7 @@ extern "C" {
 #define LIBHPCS_API __declspec(dllexport)
 #define LIBHPCS_CC __cdecl
 #else
-#define LIBHPCS_API
+#define LIBHPCS_API __attribute__ ((visibility ("default")))
 #define LIBHPCS_CC
 #endif
 

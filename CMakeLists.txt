@@ -4,7 +4,7 @@ include(TestBigEndian)
 project(libHPCS)
 
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR})
-add_definitions("-std=c89 -Wall -Wextra")
+add_definitions("-std=c89 -Wall -Wextra -fvisibility=hidden")
 
 if (CMAKE_BUILD_TYPE EQUAL "DEBUG")
   add_definitions("-ggdb -g3")
