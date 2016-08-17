@@ -1,5 +1,5 @@
 #ifndef LIBHPCS_P_H
-#define LIBHCPS_P_H
+#define LIBHPCS_P_H
 
 #ifdef __cplusplus
 extern "C" {
