@@ -113,6 +113,8 @@ enum HPCS_RetCode hpcs_read_mdata(const char* filename, struct HPCS_MeasuredData
 	enum HPCS_RetCode ret;
 	enum HPCS_GenType gentype;
 	enum HPCS_ChemStationVer cs_ver;
+	double signal_step;
+	double signal_shift;
 
 	if (mdata == NULL)
 		return HPCS_E_NULLPTR;
@@ -167,34 +169,14 @@ enum HPCS_RetCode hpcs_read_mdata(const char* filename, struct HPCS_MeasuredData
 		}
 	}
 
-	switch (mdata->file_type) {
-	case HPCS_TYPE_CE_ANALOG:
-	    pret = read_signal(datafile, &mdata->data, &mdata->data_count, CE_WORK_PARAM_OLD_STEP, mdata->sampling_rate, gentype);
-	    break;
-	case HPCS_TYPE_CE_CCD:
-	    pret = read_signal(datafile, &mdata->data, &mdata->data_count, CE_CCD_STEP, mdata->sampling_rate, gentype);
-	    break;
-	case HPCS_TYPE_CE_CURRENT:
-	    pret = read_signal(datafile, &mdata->data, &mdata->data_count, guess_current_step(cs_ver, gentype), mdata->sampling_rate, gentype);
-	    break;
-	case HPCS_TYPE_CE_DAD:
-	    pret = read_signal(datafile, &mdata->data, &mdata->data_count, CE_DAD_STEP, mdata->sampling_rate, gentype);
-	    break;
-	case HPCS_TYPE_CE_POWER:
-	case HPCS_TYPE_CE_VOLTAGE:
-	    pret = read_signal(datafile, &mdata->data, &mdata->data_count, guess_elec_sigstep(cs_ver, mdata->file_type), mdata->sampling_rate, gentype);
-	    break;
-	case HPCS_TYPE_CE_PRESSURE:
-	    pret = read_signal(datafile, &mdata->data, &mdata->data_count, CE_WORK_PARAM_STEP, mdata->sampling_rate, gentype);
-	    break;
-	case HPCS_TYPE_CE_TEMPERATURE:
-	    pret = read_signal(datafile, &mdata->data, &mdata->data_count, CE_WORK_PARAM_OLD_STEP * 10.0, mdata->sampling_rate, gentype);
-	    break;
-	case HPCS_TYPE_UNKNOWN:
-	    ret = HPCS_E_UNKNOWN_TYPE;
-	    goto out;
+	pret = fetch_signal_step(datafile, &signal_step, &signal_shift, OLD_FORMAT(gentype));
+	if (pret != PARSE_OK) {
+		PR_DEBUG("Cannot read signal step and shift\n");
+		ret = HPCS_E_PARSE_ERROR;
+		goto out;
 	}
 
+	pret = read_signal(datafile, &mdata->data, &mdata->data_count, signal_step, signal_shift, mdata->sampling_rate, gentype);
 	if (pret != PARSE_OK) {
 		PR_DEBUG("Cannot parse data in the file\n");
 		ret = HPCS_E_PARSE_ERROR;
@@ -362,6 +344,70 @@ static enum HPCS_ChemStationVer detect_chemstation_version(const char*const vers
 	return CHEMSTAT_UNKNOWN;
 }
 
+static enum HPCS_ParseCode fetch_signal_step(FILE *datafile, double *step, double *shift, bool old_format)
+{
+	int32_t version;
+	double _step;
+	double _shift;
+	HPCS_offset veroff;
+	HPCS_offset shiftoff;
+	HPCS_offset stepoff;
+
+	if (old_format) {
+		veroff = DATA_OFFSET_SIGSTEP_VERSION_OLD;
+		shiftoff = DATA_OFFSET_SIGSTEP_SHIFT_OLD;
+		stepoff = DATA_OFFSET_SIGSTEP_STEP_OLD;
+	} else {
+		veroff = DATA_OFFSET_SIGSTEP_VERSION;
+		shiftoff = DATA_OFFSET_SIGSTEP_SHIFT;
+		stepoff = DATA_OFFSET_SIGSTEP_STEP;
+	}
+
+	fseek(datafile, veroff, SEEK_SET);
+	if (feof(datafile))
+		return PARSE_E_OUT_OF_RANGE;
+	if (ferror(datafile))
+		return PARSE_E_CANT_READ;
+        if (fread(&version, LARGE_SEGMENT_SIZE, 1, datafile) < 1)
+		return PARSE_E_CANT_READ;
+
+	be_to_cpu_val(version);
+	switch (version) {
+	case 1:
+		*step = SIGSTEP_V1;
+		*shift = 0.0;
+		return PARSE_OK;
+	case 2:
+		*step = SIGSTEP_V2;
+		*shift = 0.0;
+		return PARSE_OK;
+	default:
+		break;
+	}
+
+	fseek(datafile, shiftoff, SEEK_SET);
+	if (feof(datafile))
+		return PARSE_E_OUT_OF_RANGE;
+	if (ferror(datafile))
+		return PARSE_E_CANT_READ;
+        if (fread(&_shift, DOUBLE_SEGMENT_SIZE, 1, datafile) < 1)
+		return PARSE_E_CANT_READ;
+
+	fseek(datafile, stepoff, SEEK_SET);
+	if (feof(datafile))
+		return PARSE_E_OUT_OF_RANGE;
+	if (ferror(datafile))
+		return PARSE_E_CANT_READ;
+        if (fread(&_step, DOUBLE_SEGMENT_SIZE, 1, datafile) < 1)
+		return PARSE_E_CANT_READ;
+
+	be_to_cpu_val(_shift);
+	be_to_cpu_val(_step);
+	*shift = _shift;
+	*step = _step;
+
+	return PARSE_OK;
+}
 
 static bool file_type_description_is_readable(const char*const description)
 {
@@ -380,28 +426,6 @@ static bool gentype_is_readable(const enum HPCS_GenType gentype)
 	default:
 		return false;
 	}
-}
-
-static HPCS_step guess_current_step(const enum HPCS_ChemStationVer version, const enum HPCS_GenType gentype)
-{
-	if (version == CHEMSTAT_B0625 || OLD_FORMAT(gentype))
-		return CE_WORK_PARAM_OLD_STEP * 10.0;
-
-	return CE_CURRENT_STEP;
-}
-
-static HPCS_step guess_elec_sigstep(const enum HPCS_ChemStationVer version, const enum HPCS_FileType file_type)
-{
-	if (version != CHEMSTAT_B0625) {
-		switch (file_type) {
-		case HPCS_TYPE_CE_POWER:
-			return CE_ENERGY_STEP;
-		default:
-			return CE_WORK_PARAM_OLD_STEP;
-		}
-	}
-
-	return CE_WORK_PARAM_STEP;
 }
 
 static void guess_sampling_rate(const enum HPCS_ChemStationVer version, struct HPCS_MeasuredData *mdata)
@@ -916,7 +940,7 @@ out:
 }
 
 static enum HPCS_ParseCode read_signal(FILE* datafile, struct HPCS_TVPair** pairs, size_t* pairs_count,
-				       const HPCS_step step, const double sampling_rate, const enum HPCS_GenType gentype)
+				       const double signal_step, const double signal_shift, const double sampling_rate, const enum HPCS_GenType gentype)
 {
 	const double time_step = 1 / (60 * sampling_rate);
         size_t alloc_size = (size_t)((60 * sampling_rate) + 0.5);
@@ -1012,13 +1036,13 @@ static enum HPCS_ParseCode read_signal(FILE* datafile, struct HPCS_TVPair** pair
 
 				be_to_cpu(lraw);
 				_v = *(int32_t*)lraw;
-				value = _v * step;
+				value = _v * signal_step + signal_shift;
 			} else {
 				int16_t _v;
 
 				be_to_cpu(raw);
 				_v = *(int16_t*)raw;
-				value += _v * step;
+				value += _v * signal_step + signal_shift;
 			}
 
 			(*pairs)[data_segments_read].time = time;

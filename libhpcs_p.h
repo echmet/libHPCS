@@ -43,7 +43,6 @@ enum HPCS_ParseCode {
 };
 
 typedef size_t HPCS_offset;
-typedef double HPCS_step;
 typedef size_t HPCS_segsize;
 
 const char FILE_TYPE_ID_ADC_A[] = "ADC CHANNEL A";
@@ -79,14 +78,6 @@ const char MON_OCT_STR[] = "Oct";
 const char MON_NOV_STR[] = "Nov";
 const char MON_DEC_STR[] = "Dec";
 
-/* Precision of measured values. */
-const HPCS_step CE_CURRENT_STEP = 0.01;
-const HPCS_step CE_CCD_STEP = 0.0000596046450027643;
-const HPCS_step CE_DAD_STEP = 0.000476837158203;
-const HPCS_step CE_ENERGY_STEP = 0.00000459365687208207;
-const HPCS_step CE_WORK_PARAM_STEP = 0.001;
-const HPCS_step CE_WORK_PARAM_OLD_STEP = 0.000083333333;
-
 /* Hardcoded sampling rates */
 const double CE_WORK_PARAM_SAMPRATE = 1.67;
 
@@ -100,6 +91,9 @@ const HPCS_offset DATA_OFFSET_METHOD_NAME = 0xA0E;
 const HPCS_offset DATA_OFFSET_CS_VER = 0xE11;
 const HPCS_offset DATA_OFFSET_CS_REV = 0xEDA;
 const HPCS_offset DATA_OFFSET_SAMPLING_RATE = 0x101C;
+const HPCS_offset DATA_OFFSET_SIGSTEP_VERSION = 0x1026;
+const HPCS_offset DATA_OFFSET_SIGSTEP_SHIFT = 0x1274;
+const HPCS_offset DATA_OFFSET_SIGSTEP_STEP = 0x127C;
 const HPCS_offset DATA_OFFSET_Y_UNITS = 0x104C;
 const HPCS_offset DATA_OFFSET_DEVSIG_INFO = 0x1075;
 const HPCS_offset DATA_OFFSET_DATA_START = 0x1800;
@@ -109,6 +103,9 @@ const HPCS_offset DATA_OFFSET_SAMPLE_INFO_OLD = 0x019;
 const HPCS_offset DATA_OFFSET_OPERATOR_NAME_OLD = 0x095;
 const HPCS_offset DATA_OFFSET_DATE_OLD = 0x0B3;
 const HPCS_offset DATA_OFFSET_METHOD_NAME_OLD = 0x0E5;
+const HPCS_offset DATA_OFFSET_SIGSTEP_VERSION_OLD = 0x21E;
+const HPCS_offset DATA_OFFSET_SIGSTEP_SHIFT_OLD = 0x27C;
+const HPCS_offset DATA_OFFSET_SIGSTEP_STEP_OLD = 0x284;
 const HPCS_offset DATA_OFFSET_Y_UNITS_OLD = 0x245;
 const HPCS_offset DATA_OFFSET_DEVSIG_INFO_OLD = 0x255;
 const HPCS_offset DATA_OFFSET_DATA_START_OLD = 0x400;
@@ -153,6 +150,10 @@ const char BIN_MARKER_JUMP = (const char)(0x80);
 const HPCS_segsize SMALL_SEGMENT_SIZE = 1;
 const HPCS_segsize SEGMENT_SIZE = 2;
 const HPCS_segsize LARGE_SEGMENT_SIZE = 4;
+const HPCS_segsize DOUBLE_SEGMENT_SIZE = 8;
+
+const double SIGSTEP_V1 = 0.1;
+const double SIGSTEP_V2 = 0.00240841663372301;
 
 const char HPCS_OK_STR[] = "OK.";
 const char HPCS_E_NULLPTR_STR[] = "Null pointer to measured data struct.";
@@ -174,9 +175,8 @@ static enum HPCS_ParseCode autodetect_file_type(FILE* datafile, enum HPCS_FileTy
 static enum HPCS_DataCheckCode check_for_marker(const char* segment, size_t* const next_marker_idx);
 static enum HPCS_ChemStationVer detect_chemstation_version(const char*const version_string);
 static bool gentype_is_readable(const enum HPCS_GenType gentype);
-static HPCS_step guess_current_step(const enum HPCS_ChemStationVer version, const enum HPCS_GenType gentype);
-static HPCS_step guess_elec_sigstep(const enum HPCS_ChemStationVer version, const enum HPCS_FileType file_type);
 static void guess_sampling_rate(const enum HPCS_ChemStationVer version, struct HPCS_MeasuredData* mdata);
+static enum HPCS_ParseCode fetch_signal_step(FILE * datafile, double *step, double *shift, bool old_format);
 static bool file_type_description_is_readable(const char*const description);
 static enum HPCS_ParseCode next_native_line(HPCS_UFH fh, HPCS_NChar* line, int32_t length);
 static HPCS_UFH open_data_file(const char* filename);
@@ -191,7 +191,7 @@ static enum HPCS_ParseCode read_file_type_description(FILE* datafile, char** con
 static enum HPCS_ParseCode read_generic_type(FILE* datafile, enum HPCS_GenType* gentype);
 static enum HPCS_ParseCode read_method_info_file(HPCS_UFH fh, struct HPCS_MethodInfo* minfo);
 static enum HPCS_ParseCode read_signal(FILE* datafile, struct HPCS_TVPair** pairs, size_t* pairs_count,
-				       const HPCS_step step, const double sampling_rate, const enum HPCS_GenType gentype);
+				       const double sigal_step, const double signal_shift, const double sampling_rate, const enum HPCS_GenType gentype);
 static enum HPCS_ParseCode read_sampling_rate(FILE* datafile, double* sampling_rate, const bool old_format);
 static enum HPCS_ParseCode read_string_at_offset(FILE* datafile, const HPCS_offset, char** const result, const bool read_as_wchar);
 static void remove_trailing_newline(HPCS_NChar* s);
@@ -242,6 +242,7 @@ static enum HPCS_ParseCode __unix_data_to_utf8(char** target, const char* bytes,
 
 #ifdef _HPCS_LITTLE_ENDIAN
 #define be_to_cpu(bytes) reverse_endianness((char*)bytes, sizeof(bytes));
+#define be_to_cpu_val(v) do { char *b = (char *)&v; const size_t sz = sizeof(v); reverse_endianness(b, sz); } while (0)
 
 void reverse_endianness(char* bytes, size_t sz) {
 	size_t i;
@@ -255,6 +256,7 @@ void reverse_endianness(char* bytes, size_t sz) {
 
 #elif defined _HPCS_BIG_ENDIAN
 #define be_to_cpu(bytes)
+#define be_to_cpu_val(v)
 #else
 #error "Endiannes has not been determined."
 #endif
