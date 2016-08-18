@@ -905,14 +905,14 @@ static enum HPCS_ParseCode read_generic_type(FILE* datafile, enum HPCS_GenType* 
 	if (ferror(datafile))
 		return PARSE_E_CANT_READ;
 
-	if (fread(&len, SMALL_SEGMENT_SIZE, 1, datafile) < SMALL_SEGMENT_SIZE)
+	if (fread(&len, SMALL_SEGMENT_SIZE, 1, datafile) < 1)
 		return PARSE_E_CANT_READ;
 
 	gentype_str = malloc((sizeof(char) * len) + 1);
 	if (gentype_str == NULL)
 		return PARSE_E_NO_MEM;
 
-	if (fread(gentype_str, SMALL_SEGMENT_SIZE, len, datafile) < SMALL_SEGMENT_SIZE * len) {
+	if (fread(gentype_str, SMALL_SEGMENT_SIZE, len, datafile) < len) {
 		ret = PARSE_E_CANT_READ;
 		goto out;
 	}
