@@ -176,13 +176,17 @@ enum HPCS_RetCode hpcs_read_mdata(const char* filename, struct HPCS_MeasuredData
 		goto out;
 	}
 
-	pret = read_signal(datafile, &mdata->data, &mdata->data_count, signal_step, signal_shift, mdata->sampling_rate, gentype);
+	pret = read_signal(datafile, &mdata->data, &mdata->data_count, signal_step, signal_shift, gentype);
 	if (pret != PARSE_OK) {
 		PR_DEBUG("Cannot parse data in the file\n");
 		ret = HPCS_E_PARSE_ERROR;
 	}
 	else
 		ret = HPCS_OK;
+
+	pret = read_timing(datafile, mdata->data, &mdata->sampling_rate, mdata->data_count);
+	if (pret != PARSE_OK)
+		ret = HPCS_E_PARSE_ERROR;
 
 out:
 	fclose(datafile);
@@ -425,39 +429,6 @@ static bool gentype_is_readable(const enum HPCS_GenType gentype)
 		return true;
 	default:
 		return false;
-	}
-}
-
-static void guess_sampling_rate(const enum HPCS_ChemStationVer version, struct HPCS_MeasuredData *mdata)
-{
-	switch (version) {
-	case CHEMSTAT_UNTAGGED:
-		switch (mdata->file_type) {
-		case HPCS_TYPE_CE_DAD:
-			mdata->sampling_rate *= 10;
-			break;
-		default:
-			mdata->sampling_rate = CE_WORK_PARAM_SAMPRATE;
-		}
-		break;
-	case CHEMSTAT_B0626:
-	case CHEMSTAT_B0643:
-	case CHEMSTAT_B0644:
-		switch (mdata->file_type) {
-		case HPCS_TYPE_CE_DAD:
-		case HPCS_TYPE_CE_CCD:
-			mdata->sampling_rate /= 100;
-			break;
-		default:
-			if (version == CHEMSTAT_B0644)
-				mdata->sampling_rate /= 100;
-			else
-				mdata->sampling_rate = CE_WORK_PARAM_SAMPRATE;
-			break;
-		}
-		break;
-	default:
-		break;
 	}
 }
 
@@ -810,12 +781,6 @@ static enum HPCS_ParseCode read_file_header(FILE* datafile, enum HPCS_ChemStatio
 		return pret;
 	}
 
-	pret = read_sampling_rate(datafile, &mdata->sampling_rate, old_format);
-	if (pret != PARSE_OK) {
-	    PR_DEBUGF("%s%d\n", "Cannot read sampling rate of the file, errno: ", pret);
-	    return pret;
-	}
-
 	*cs_ver = detect_chemstation_version(mdata->cs_ver);
 	if (pret != PARSE_OK) {
 		PR_DEBUGF("%s%d\n", "Cannot detect ChemStation version, errno: ", pret);
@@ -836,7 +801,9 @@ static enum HPCS_ParseCode read_file_header(FILE* datafile, enum HPCS_ChemStatio
 	    }
 	}
 
-	guess_sampling_rate(*cs_ver, mdata);
+	/* Sampling rate information is unreliable unless the whole file is read */
+	mdata->sampling_rate = -1.0;
+
 	return PARSE_OK;
 }
 
@@ -940,13 +907,11 @@ out:
 }
 
 static enum HPCS_ParseCode read_signal(FILE* datafile, struct HPCS_TVPair** pairs, size_t* pairs_count,
-				       const double signal_step, const double signal_shift, const double sampling_rate, const enum HPCS_GenType gentype)
+				       const double signal_step, const double signal_shift, const enum HPCS_GenType gentype)
 {
-	const double time_step = 1 / (60 * sampling_rate);
-        size_t alloc_size = (size_t)((60 * sampling_rate) + 0.5);
+        size_t alloc_size = (size_t)((60 * 25));
 	bool read_file = true;
 	double value = 0;
-	double time = 0;
 	size_t segments_read = 0;
 	size_t data_segments_read = 0;
 	size_t next_marker_idx = 0;
@@ -1002,7 +967,7 @@ static enum HPCS_ParseCode read_signal(FILE* datafile, struct HPCS_TVPair** pair
 		/* Expand storage if there is more data than we can store */
 		if (alloc_size == data_segments_read) {
 			struct HPCS_TVPair* nptr;
-                        alloc_size += (size_t)((60 * sampling_rate) + 0.5);
+                        alloc_size += (size_t)((60 * 25));
 			nptr = realloc(*pairs, sizeof(struct HPCS_TVPair) * alloc_size);
 
 			if (nptr == NULL) {
@@ -1045,10 +1010,8 @@ static enum HPCS_ParseCode read_signal(FILE* datafile, struct HPCS_TVPair** pair
 				value += _v * signal_step + signal_shift;
 			}
 
-			(*pairs)[data_segments_read].time = time;
 			(*pairs)[data_segments_read].value = value;
 			data_segments_read++;
-			time += time_step;
 			break;
 		default:
 			PR_DEBUG("Invalid value from check_for_marker()\n");
@@ -1062,30 +1025,41 @@ static enum HPCS_ParseCode read_signal(FILE* datafile, struct HPCS_TVPair** pair
 	return PARSE_OK;
 }
 
-static enum HPCS_ParseCode read_sampling_rate(FILE* datafile, double* sampling_rate, const bool old_format)
+static enum HPCS_ParseCode read_timing(FILE* datafile, struct HPCS_TVPair*const pairs, double *sampling_rate, const size_t data_count)
 {
-	char raw[2];
-	uint16_t number;
-	size_t r;
+	int32_t xmin;
+	int32_t xmax;
+	double xminf;
+	double xmaxf;
+	double time_step;
+	double t;
+	size_t idx;
 
-	if (old_format) {
-		*sampling_rate = 0.0; /* This information cannot be read from the datafile */
-		return PARSE_OK;
-	}
-
-	fseek(datafile, DATA_OFFSET_SAMPLING_RATE, SEEK_SET);
+	fseek(datafile, DATA_OFFSET_XMIN, SEEK_SET);
 	if (feof(datafile))
 		return PARSE_E_OUT_OF_RANGE;
 	if (ferror(datafile))
 		return PARSE_E_CANT_READ;
 
-	r = fread(raw, SEGMENT_SIZE, 1, datafile);
-	if (r != 1)
+	if (fread(&xmin, LARGE_SEGMENT_SIZE, 1, datafile) < 1)
+		return PARSE_E_CANT_READ;
+	if (fread(&xmax, LARGE_SEGMENT_SIZE, 1, datafile) < 1)
 		return PARSE_E_CANT_READ;
 
-	be_to_cpu(raw);
-	number = *(uint16_t*)(raw);
-	*sampling_rate = number / 10.0;
+	be_to_cpu_val(xmin);
+	be_to_cpu_val(xmax);
+
+	xminf = (double)xmin / 60000.0;
+	xmaxf = (double)xmax / 60000.0;
+
+	time_step = (xmaxf - xminf) / data_count;
+	*sampling_rate = 1.0 / (time_step * 60.0);
+
+	t = xminf;
+	for (idx = 0; idx < data_count; idx++) {
+		pairs[idx].time = t;
+		t += time_step;
+	}
 
 	return PARSE_OK;
 }

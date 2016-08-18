@@ -83,6 +83,8 @@ const double CE_WORK_PARAM_SAMPRATE = 1.67;
 
 /* Offsets containing data of interest in .ch files */
 const HPCS_offset DATA_OFFSET_GENTYPE = 0x000;
+const HPCS_offset DATA_OFFSET_XMIN = 0x11A;
+const HPCS_offset DATA_OFFSEt_XMAX = 0x11E;
 const HPCS_offset DATA_OFFSET_FILE_DESC = 0x15B;
 const HPCS_offset DATA_OFFSET_SAMPLE_INFO = 0x35A;
 const HPCS_offset DATA_OFFSET_OPERATOR_NAME = 0x758;
@@ -175,7 +177,6 @@ static enum HPCS_ParseCode autodetect_file_type(FILE* datafile, enum HPCS_FileTy
 static enum HPCS_DataCheckCode check_for_marker(const char* segment, size_t* const next_marker_idx);
 static enum HPCS_ChemStationVer detect_chemstation_version(const char*const version_string);
 static bool gentype_is_readable(const enum HPCS_GenType gentype);
-static void guess_sampling_rate(const enum HPCS_ChemStationVer version, struct HPCS_MeasuredData* mdata);
 static enum HPCS_ParseCode fetch_signal_step(FILE * datafile, double *step, double *shift, bool old_format);
 static bool file_type_description_is_readable(const char*const description);
 static enum HPCS_ParseCode next_native_line(HPCS_UFH fh, HPCS_NChar* line, int32_t length);
@@ -191,9 +192,9 @@ static enum HPCS_ParseCode read_file_type_description(FILE* datafile, char** con
 static enum HPCS_ParseCode read_generic_type(FILE* datafile, enum HPCS_GenType* gentype);
 static enum HPCS_ParseCode read_method_info_file(HPCS_UFH fh, struct HPCS_MethodInfo* minfo);
 static enum HPCS_ParseCode read_signal(FILE* datafile, struct HPCS_TVPair** pairs, size_t* pairs_count,
-				       const double sigal_step, const double signal_shift, const double sampling_rate, const enum HPCS_GenType gentype);
-static enum HPCS_ParseCode read_sampling_rate(FILE* datafile, double* sampling_rate, const bool old_format);
+				       const double sigal_step, const double signal_shift, const enum HPCS_GenType gentype);
 static enum HPCS_ParseCode read_string_at_offset(FILE* datafile, const HPCS_offset, char** const result, const bool read_as_wchar);
+static enum HPCS_ParseCode read_timing(FILE* datafile, struct HPCS_TVPair*const pairs, double *sampling_rate, const size_t data_count);
 static void remove_trailing_newline(HPCS_NChar* s);
 static enum HPCS_ParseCode __read_string_at_offset_v1(FILE* datafile, const HPCS_offset offset, char** const result);
 static enum HPCS_ParseCode __read_string_at_offset_v2(FILE* datafile, const HPCS_offset offset, char** const result);
