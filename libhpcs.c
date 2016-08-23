@@ -115,6 +115,7 @@ enum HPCS_RetCode hpcs_read_mdata(const char* filename, struct HPCS_MeasuredData
 	enum HPCS_ChemStationVer cs_ver;
 	double signal_step;
 	double signal_shift;
+	size_t scans_start;
 
 	if (mdata == NULL)
 		return HPCS_E_NULLPTR;
@@ -176,7 +177,14 @@ enum HPCS_RetCode hpcs_read_mdata(const char* filename, struct HPCS_MeasuredData
 		goto out;
 	}
 
-	pret = read_signal(datafile, &mdata->data, &mdata->data_count, signal_step, signal_shift, gentype);
+	pret = read_scans_start(datafile, &scans_start);
+	if (pret != PARSE_OK) {
+		PR_DEBUG("Cannot read scans start offset\n");
+		ret = HPCS_E_PARSE_ERROR;
+		goto out;
+	}
+
+	pret = read_signal(datafile, &mdata->data, &mdata->data_count, scans_start, signal_step, signal_shift);
 	if (pret != PARSE_OK) {
 		PR_DEBUG("Cannot parse data in the file\n");
 		ret = HPCS_E_PARSE_ERROR;
@@ -906,8 +914,30 @@ out:
 	return ret;
 }
 
+static enum HPCS_ParseCode read_scans_start(FILE* datafile, size_t *scans_start)
+{
+	size_t r;
+	int32_t _start;
+
+	fseek(datafile, DATA_SCANS_START, SEEK_SET);
+	if (feof(datafile))
+		return PARSE_E_OUT_OF_RANGE;
+	if (ferror(datafile))
+		return PARSE_E_CANT_READ;
+
+	r = fread(&_start, LARGE_SEGMENT_SIZE, 1, datafile);
+	if (r != 1)
+		return PARSE_E_CANT_READ;
+
+	be_to_cpu_val(_start);
+
+	*scans_start = (_start - 1) * 512;
+
+	return PARSE_OK;
+}
+
 static enum HPCS_ParseCode read_signal(FILE* datafile, struct HPCS_TVPair** pairs, size_t* pairs_count,
-				       const double signal_step, const double signal_shift, const enum HPCS_GenType gentype)
+				       const size_t scans_start, const double signal_step, const double signal_shift)
 {
         size_t alloc_size = (size_t)((60 * 25));
 	bool read_file = true;
@@ -915,12 +945,11 @@ static enum HPCS_ParseCode read_signal(FILE* datafile, struct HPCS_TVPair** pair
 	size_t segments_read = 0;
 	size_t data_segments_read = 0;
 	size_t next_marker_idx = 0;
-	const HPCS_offset data_start_offset = OLD_FORMAT(gentype) ? DATA_OFFSET_DATA_START_OLD : DATA_OFFSET_DATA_START;
 	char raw[2];
 	size_t r;
 	enum HPCS_DataCheckCode dret;
 
-	fseek(datafile, data_start_offset, SEEK_SET);
+	fseek(datafile, scans_start, SEEK_SET);
 	if (feof(datafile))
 		return PARSE_E_OUT_OF_RANGE;
 	if (ferror(datafile))

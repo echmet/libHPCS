@@ -83,6 +83,7 @@ const double CE_WORK_PARAM_SAMPRATE = 1.67;
 
 /* Offsets containing data of interest in .ch files */
 const HPCS_offset DATA_OFFSET_GENTYPE = 0x000;
+const HPCS_offset DATA_SCANS_START = 0x108;
 const HPCS_offset DATA_OFFSET_XMIN = 0x11A;
 const HPCS_offset DATA_OFFSEt_XMAX = 0x11E;
 const HPCS_offset DATA_OFFSET_FILE_DESC = 0x15B;
@@ -190,8 +191,9 @@ static enum HPCS_ParseCode read_file_header(FILE* datafile, enum HPCS_ChemStatio
 static enum HPCS_ParseCode read_file_type_description(FILE* datafile, char** const description, const enum HPCS_GenType gentype);
 static enum HPCS_ParseCode read_generic_type(FILE* datafile, enum HPCS_GenType* gentype);
 static enum HPCS_ParseCode read_method_info_file(HPCS_UFH fh, struct HPCS_MethodInfo* minfo);
+static enum HPCS_ParseCode read_scans_start(FILE* datafile, size_t *scans_start);
 static enum HPCS_ParseCode read_signal(FILE* datafile, struct HPCS_TVPair** pairs, size_t* pairs_count,
-				       const double sigal_step, const double signal_shift, const enum HPCS_GenType gentype);
+				       const size_t scans_start, const double sigal_step, const double signal_shift);
 static enum HPCS_ParseCode read_string_at_offset(FILE* datafile, const HPCS_offset, char** const result, const bool read_as_wchar);
 static enum HPCS_ParseCode read_timing(FILE* datafile, struct HPCS_TVPair*const pairs, double *sampling_rate, const size_t data_count);
 static void remove_trailing_newline(HPCS_NChar* s);
