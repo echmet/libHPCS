@@ -1021,8 +1021,8 @@ static enum HPCS_ParseCode read_signal(FILE* datafile, struct HPCS_TVPair** pair
 				int32_t _v;
 
 				PR_DEBUGF("Value has jumped at 0x%lx\n", segments_read);
-				fread(lraw, LARGE_SEGMENT_SIZE, 1, datafile);
-				if (feof(datafile) || ferror(datafile)) {
+				r = fread(lraw, LARGE_SEGMENT_SIZE, 1, datafile);
+				if (feof(datafile) || ferror(datafile) || (r != 1)) {
 					free(*pairs);
 					*pairs = NULL;
 					return PARSE_E_CANT_READ;
