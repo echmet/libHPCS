@@ -17,7 +17,7 @@ else()
   add_definitions(-D_HPCS_LITTLE_ENDIAN)
 endif()
 
-if (!WIN32)
+if (NOT WIN32)
     find_package(ICU 52 REQUIRED COMPONENTS uc io)
 else()
     set(ICU_INCLUDE_DIRS "")
