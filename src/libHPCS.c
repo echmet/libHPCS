@@ -2,7 +2,7 @@
 extern "C" {
 #endif
 
-#include "include/libHPCS.h"
+#include <libHPCS.h>
 #include "libHPCS_p.h"
 
 #ifdef _WIN32

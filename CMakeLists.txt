@@ -26,10 +26,10 @@ else()
 endif()
 
 set(libHPCS_SRCS
-    libHPCS.c)
+    src/libHPCS.c)
 
 include_directories(
-  ${CMAKE_CURRENT_SOURCE_DIR}
+  "${CMAKE_CURRENT_SOURCE_DIR}/include"
   ${ICU_INCLUDE_DIRS})
 
 add_library(HPCS SHARED ${libHPCS_SRCS})
