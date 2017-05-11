@@ -2,8 +2,8 @@
 extern "C" {
 #endif
 
-#include "include/libhpcs.h"
-#include "libhpcs_p.h"
+#include "include/libHPCS.h"
+#include "libHPCS_p.h"
 
 #ifdef _WIN32
 #include <sdkddkver.h>

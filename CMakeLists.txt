@@ -26,7 +26,7 @@ else()
 endif()
 
 set(libHPCS_SRCS
-    libhpcs.c)
+    libHPCS.c)
 
 include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}
@@ -37,7 +37,7 @@ target_link_libraries(HPCS PRIVATE ${ICU_LIBRARIES})
 set_target_properties(HPCS
 		      PROPERTIES VERSION 5.0
 		      SOVERSION 5.0
-		      PUBLIC_HEADER "${PROJECT_SOURCE_DIR}/include/libhpcs.h")
+		      PUBLIC_HEADER "${PROJECT_SOURCE_DIR}/include/libHPCS.h")
 install(TARGETS HPCS
 	LIBRARY DESTINATION lib
 	PUBLIC_HEADER DESTINATION include)
