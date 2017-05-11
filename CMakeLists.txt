@@ -34,7 +34,12 @@ add_library(HPCS SHARED ${libHPCS_SRCS})
 target_link_libraries(HPCS PRIVATE ${ICU_LIBRARIES})
 set_target_properties(HPCS
 		      PROPERTIES VERSION 5.0
-		      SOVERSION 5.0)
+		      SOVERSION 5.0
+		      PUBLIC_HEADER "${PROJECT_SOURCE_DIR}/include/libhpcs.h")
+install(TARGETS HPCS
+	LIBRARY DESTINATION lib
+	PUBLIC_HEADER DESTINATION include)
+
 
 if (${BuildTestTool})
   set(libHPCS_test_SRCS
