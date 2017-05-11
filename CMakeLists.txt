@@ -3,6 +3,8 @@ include(TestBigEndian)
 
 project(libHPCS)
 
+option(BUILD_TEST_TOOL "Build a simple test tool to check the library's operation" OFF)
+
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR})
 add_definitions("-std=c89 -Wall -Wextra -fvisibility=hidden")
 
@@ -41,7 +43,7 @@ install(TARGETS HPCS
 	PUBLIC_HEADER DESTINATION include)
 
 
-if (${BuildTestTool})
+if (BUILD_TEST_TOOL)
   set(libHPCS_test_SRCS
       test_tool.c)
 
