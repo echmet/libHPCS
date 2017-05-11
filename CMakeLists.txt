@@ -46,10 +46,6 @@ set_target_properties(HPCS
                       PROPERTIES VERSION 5.0
                                  SOVERSION 5.0
                                  PUBLIC_HEADER "${PROJECT_SOURCE_DIR}/include/libHPCS.h")
-if (MSVC)
-    set_target_properties(HPCS
-                          PROPERTIES PREFIX "lib")
-endif()
 
 if (NOT WIN32)
     install(TARGETS HPCS
@@ -61,10 +57,9 @@ else()
             PUBLIC_HEADER DESTINATION include)
 endif()
 
-
 if (BUILD_TEST_TOOL)
   set(libHPCS_test_SRCS
-      test_tool.c)
+      src/test_tool.c)
 
   add_executable(test_tool ${libHPCS_test_SRCS})
   target_link_libraries(test_tool HPCS)
