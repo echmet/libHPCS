@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <libhpcs.h>
+#include <libHPCS.h>
 
 static int read_data(const char* path)
 {
