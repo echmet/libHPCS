@@ -9,12 +9,20 @@ extern "C" {
 #include <stdint.h>
 
 #ifdef _WIN32
-#define LIBHPCS_API __declspec(dllexport)
+	#ifdef _HPCS_BUILD_DLL
+		#define LIBHPCS_API __declspec(dllexport)
+	#else
+		#define LIBHPCS_API __declspec(dllimport)
+	#endif /* _HPCS_BUILD_DLL */
 #define LIBHPCS_CC __cdecl
 #else
-#define LIBHPCS_API __attribute__ ((visibility ("default")))
-#define LIBHPCS_CC
-#endif
+	#ifdef _HPCS_BUILD_DLL
+		#define LIBHPCS_API __attribute__ ((visibility ("default")))
+	#else
+		#define LIBHPCS_API
+	#endif /* _HPCS_BUILD_DLL */
+	#define LIBHPCS_CC
+#endif /* _WIN32 */
 
 enum HPCS_FileType {
 	HPCS_TYPE_CE_ANALOG,

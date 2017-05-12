@@ -13,6 +13,7 @@ if (NOT MSVC)
     endif()
 endif()
 
+add_definitions(-D_HPCS_BUILD_DLL)
 
 if (WIN32)
     set(WIN32_EXTRA_LIBS Shlwapi)
