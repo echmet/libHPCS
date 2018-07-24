@@ -4,7 +4,7 @@
 #include <string.h>
 #include <libHPCS.h>
 
-static int read_data(const char* path)
+static int read_data(const char* path, int raw_output)
 {
 	struct HPCS_MeasuredData* mdata;
 	enum HPCS_RetCode hret;
@@ -33,8 +33,12 @@ static int read_data(const char* path)
 		  mdata->y_units,
 		  mdata->sampling_rate);
 
-	for (di = 0; di < mdata->data_count; di++)
-		printf("Time: %.17lg, Value: %.17lg\n", mdata->data[di].time, mdata->data[di].value);
+	for (di = 0; di < mdata->data_count; di++) {
+		if (raw_output)
+			printf("%.17lg; %.17lg\n", mdata->data[di].time, mdata->data[di].value);
+		else
+			printf("Time: %.17lg; Value: %.17lg\n", mdata->data[di].time, mdata->data[di].value);
+	}
 
 	hpcs_free_mdata(mdata);
 
@@ -106,21 +110,26 @@ static int read_info(const char* path)
 
 int main(int argc, char** argv)
 {
+	const char* sel;
+
 	if (argc < 3) {
 		printf("Not enough arguments\n");
 		printf("Usage: test_tool MODE FILE\n");
 		printf("MODE: d - read data file\n"
+		       "      r - read data file - raw output\n"
 		       "      i - method info\n"
 		       "      h - read header only\n"
 		       "FILE: path\n");
 		return EXIT_FAILURE;
 	}
 
-	if (strcmp(argv[1], "d") == 0)
-		return read_data(argv[2]);
-	else if (strcmp(argv[1], "h") == 0)
+	sel = argv[1];
+
+	if (strcmp(sel, "d") == 0 || strcmp(sel, "r") == 0)
+		return read_data(argv[2], strcmp(sel, "r") == 0);
+	else if (strcmp(sel, "h") == 0)
 		return read_header(argv[2]);
-	else if (strcmp(argv[1], "i") == 0)
+	else if (strcmp(sel, "i") == 0)
 		return read_info(argv[2]);
 	else {
 		printf("Invalid mode argument\n");
