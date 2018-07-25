@@ -174,7 +174,7 @@ UChar* CR_LF;
 #endif
 
 static enum HPCS_ParseCode autodetect_file_type(FILE* datafile, enum HPCS_FileType* file_type, const bool p_means_pressure, const enum HPCS_GenType gentype);
-static enum HPCS_DataCheckCode check_for_marker(const char* segment, size_t* const next_marker_idx);
+static enum HPCS_DataCheckCode check_for_marker(const char* segment, size_t* const next_marker_idx, const size_t segments_read);
 static enum HPCS_ChemStationVer detect_chemstation_version(const char*const version_string);
 static bool gentype_is_readable(const enum HPCS_GenType gentype);
 static enum HPCS_ParseCode fetch_signal_step(FILE * datafile, double *step, double *shift, bool old_format);

@@ -319,9 +319,15 @@ out:
 	return PARSE_OK;
 }
 
-static enum HPCS_DataCheckCode check_for_marker(const char* segment, size_t* const next_marker_idx)
+static enum HPCS_DataCheckCode check_for_marker(const char* segment, size_t* const next_marker_idx, const size_t segments_read)
 {
-	if (segment[0] == BIN_MARKER_A && segment[1] != BIN_MARKER_END) {
+	if (segment[0] == BIN_MARKER_A) {
+		if (segments_read != *next_marker_idx)
+			return DCHECK_NO_MARKER;
+
+		if (segment[1] == BIN_MARKER_END)
+			return DCHECK_NO_MARKER;
+
 		*next_marker_idx += (uint8_t)segment[1] + 1;
 		return DCHECK_GOT_MARKER;
 	} else
@@ -959,20 +965,25 @@ static enum HPCS_ParseCode read_signal(FILE* datafile, struct HPCS_TVPair** pair
 	r = fread(raw, SEGMENT_SIZE, 1, datafile);
 	if (r != 1)
 		return PARSE_E_CANT_READ;
-	segments_read++;
 
-	dret = check_for_marker(raw, &next_marker_idx);
+	dret = check_for_marker(raw, &next_marker_idx, segments_read);
 	switch (dret) {
 	case DCHECK_EOF:
+		PR_DEBUG("File contains no data\n");
+		return PARSE_E_CANT_READ;
 	case DCHECK_NO_MARKER:
+		PR_DEBUG("Leading marker not present\n");
 		return PARSE_E_NOT_FOUND;
 	default:
 		break;
 	}
+	segments_read++;
 
 	*pairs = malloc(sizeof(struct HPCS_TVPair) * alloc_size);
 	if (*pairs == NULL)
 		return PARSE_E_NO_MEM;
+
+	PR_DEBUGF("Reading signal, first mid-marker expected at segment %lu\n", next_marker_idx);
 
 	while (read_file) {
 		r = fread(raw, SEGMENT_SIZE, 1, datafile);
@@ -1009,22 +1020,29 @@ static enum HPCS_ParseCode read_signal(FILE* datafile, struct HPCS_TVPair** pair
 		}
 
 		/* Check for markers */
-		dret = check_for_marker(raw, &next_marker_idx);
+		dret = check_for_marker(raw, &next_marker_idx, segments_read);
 		switch (dret) {
 		case DCHECK_GOT_MARKER:
-			PR_DEBUGF("Got marker at segment %lu, byte 0x%lx\n", segments_read, 2 * segments_read);
-			continue;
+#ifndef NDEBUG
+		{
+			const size_t pos = ftell(datafile) - SEGMENT_SIZE;
+			fprintf(stderr, "Got marker at segment %lu, byte 0x%lx, next marker expected at %lu\n", segments_read, pos, next_marker_idx);
+		}
+#endif
+			break;
 		case DCHECK_NO_MARKER:
 #ifndef NDEBUG
 			if (segments_read == next_marker_idx)
-				PR_DEBUGF("Warning - marker expected but not found at segment %lu", segments_read);
+				fprintf(stderr, "Warning - marker expected but not found at segment %lu\n", segments_read);
 #endif
 			/* Check for a sudden jump of value */
 			if (raw[0] == BIN_MARKER_JUMP && raw[1] == BIN_MARKER_END) {
 				char lraw[4];
 				int32_t _v;
-
-				PR_DEBUGF("Value has jumped at 0x%lx\n", segments_read);
+#ifndef NDEBUG
+				const size_t pos = ftell(datafile) - SEGMENT_SIZE;
+				fprintf(stderr, "Value has jumped at %lu, byte 0x%lx\n", segments_read, pos);
+#endif
 				r = fread(lraw, LARGE_SEGMENT_SIZE, 1, datafile);
 				if (feof(datafile) || ferror(datafile) || (r != 1)) {
 					free(*pairs);
@@ -1044,7 +1062,6 @@ static enum HPCS_ParseCode read_signal(FILE* datafile, struct HPCS_TVPair** pair
 			}
 
 			(*pairs)[data_segments_read].value = value;
-			segments_read++;
 			data_segments_read++;
 			break;
 		default:
@@ -1053,6 +1070,7 @@ static enum HPCS_ParseCode read_signal(FILE* datafile, struct HPCS_TVPair** pair
 			*pairs = NULL;
 			return PARSE_E_CANT_READ;
 		}
+		segments_read++;
 	}
 
 	*pairs_count = data_segments_read;
