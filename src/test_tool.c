@@ -4,6 +4,24 @@
 #include <string.h>
 #include <libHPCS.h>
 
+static void print_header(const struct HPCS_MeasuredData *mdata)
+{
+	printf("Sample info: %s\n"
+	       "Operator name: %s\n"
+	       "Method name: %s\n"
+	       "Y units: %s\n"
+	       "Sampling rate: %lf\n"
+	       "Wavelength: %u (ref: %u)\n"
+	       "File description: %s\n",
+	       mdata->sample_info,
+	       mdata->operator_name,
+	       mdata->method_name,
+	       mdata->y_units,
+	       mdata->sampling_rate,
+	       mdata->dad_wavelength_msr.wavelength, mdata->dad_wavelength_ref.wavelength,
+	       mdata->file_description);
+}
+
 static int read_data(const char* path, int raw_output)
 {
 	struct HPCS_MeasuredData* mdata;
@@ -22,16 +40,7 @@ static int read_data(const char* path, int raw_output)
 		return EXIT_FAILURE;
 	}
 
-	printf("Sample info: %s\n"
-		  "Operator name: %s\n"
-		  "Method name: %s\n"
-		  "Y units: %s\n"
-		  "Sample rate: %lf\n",
-		  mdata->sample_info,
-		  mdata->operator_name,
-		  mdata->method_name,
-		  mdata->y_units,
-		  mdata->sampling_rate);
+	print_header(mdata);
 
 	for (di = 0; di < mdata->data_count; di++) {
 		if (raw_output)
@@ -62,18 +71,7 @@ static int read_header(const char* path)
 		return EXIT_FAILURE;
 	}
 
-	printf("Sample info: %s\n"
-		  "Operator name: %s\n"
-		  "Method name: %s\n"
-		  "Y units: %s\n"
-		  "Sampling rate: %f\n"
-		  "File description: %s\n",
-		  mdata->sample_info,
-		  mdata->operator_name,
-		  mdata->method_name,
-		  mdata->y_units,
-		  mdata->sampling_rate,
-		  mdata->file_description);
+	print_header(mdata);
 
 	hpcs_free_mdata(mdata);
 
