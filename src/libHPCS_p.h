@@ -81,7 +81,7 @@ const char MON_DEC_STR[] = "Dec";
 /* Hardcoded sampling rates */
 const double CE_WORK_PARAM_SAMPRATE = 1.67;
 
-/* Offsets containing data of interest in .ch files */
+/* Offsets containing data of interest in LC130 files */
 const HPCS_offset DATA_OFFSET_GENTYPE = 0x000;
 const HPCS_offset DATA_SCANS_START = 0x108;
 const HPCS_offset DATA_OFFSET_XMIN = 0x11A;
@@ -98,8 +98,7 @@ const HPCS_offset DATA_OFFSET_SIGSTEP_SHIFT = 0x1274;
 const HPCS_offset DATA_OFFSET_SIGSTEP_STEP = 0x127C;
 const HPCS_offset DATA_OFFSET_Y_UNITS = 0x104C;
 const HPCS_offset DATA_OFFSET_DEVSIG_INFO = 0x1075;
-const HPCS_offset DATA_OFFSET_DATA_START = 0x1800;
-/* Offsets valid of old HP data format */
+/* Offsets containing data of interest in LC30 files */
 const HPCS_offset DATA_OFFSET_FILE_DESC_OLD = 0x005;
 const HPCS_offset DATA_OFFSET_SAMPLE_INFO_OLD = 0x019;
 const HPCS_offset DATA_OFFSET_OPERATOR_NAME_OLD = 0x095;
