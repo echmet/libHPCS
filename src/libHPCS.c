@@ -4,6 +4,7 @@ extern "C" {
 
 #include <libHPCS.h>
 #include "libHPCS_p.h"
+#include <assert.h>
 
 #ifdef _WIN32
 #include <sdkddkver.h>
@@ -185,7 +186,7 @@ enum HPCS_RetCode hpcs_read_mdata(const char* filename, struct HPCS_MeasuredData
 		goto out;
 	}
 
-	pret = read_signal(datafile, &mdata->data, &mdata->data_count, scans_start, signal_step, signal_shift);
+	pret = read_signal(datafile, &mdata->data, &mdata->data_count, scans_start, signal_step, signal_shift, gentype);
 	if (pret != PARSE_OK) {
 		PR_DEBUG("Cannot parse data in the file\n");
 		ret = HPCS_E_PARSE_ERROR;
@@ -193,7 +194,8 @@ enum HPCS_RetCode hpcs_read_mdata(const char* filename, struct HPCS_MeasuredData
 	else
 		ret = HPCS_OK;
 
-	pret = read_timing(datafile, mdata->data, &mdata->sampling_rate, mdata->data_count);
+	pret = read_timing(datafile, mdata->data, &mdata->sampling_rate, mdata->data_count,
+			   gentype == GENTYPE_GC_B);
 	if (pret != PARSE_OK)
 		ret = HPCS_E_PARSE_ERROR;
 
@@ -363,6 +365,23 @@ static enum HPCS_ChemStationVer detect_chemstation_version(const char*const vers
 	return CHEMSTAT_UNKNOWN;
 }
 
+static enum HPCS_ParseCode expand_storage(struct HPCS_TVPair** pairs, size_t* const alloc_size)
+{
+	struct HPCS_TVPair* nptr;
+	*alloc_size += (size_t)((60 * 25));
+	nptr = realloc(*pairs, sizeof(struct HPCS_TVPair) * (*alloc_size));
+
+	if (nptr == NULL) {
+		free(*pairs);
+		*pairs = NULL;
+		return PARSE_E_NO_MEM;
+	}
+
+	*pairs = nptr;
+
+	return PARSE_OK;
+}
+
 static enum HPCS_ParseCode fetch_signal_step(FILE *datafile, double *step, double *shift, bool old_format)
 {
 	int32_t version;
@@ -432,6 +451,8 @@ static bool file_type_description_is_readable(const char*const description)
 {
 	if (!strcmp(FILE_DESC_LC_DATA_FILE, description))
 		return true;
+	else if (!strcmp(FILE_DESC_GC_DATA_FILE, description))
+		return true;
 	else
 		return false;
 }
@@ -441,6 +462,7 @@ static bool gentype_is_readable(const enum HPCS_GenType gentype)
 	switch (gentype) {
 	case GENTYPE_ADC_LC:
 	case GENTYPE_ADC_LC2:
+	case GENTYPE_GC_B:
 		return true;
 	default:
 		return false;
@@ -944,7 +966,24 @@ static enum HPCS_ParseCode read_scans_start(FILE* datafile, size_t *scans_start)
 }
 
 static enum HPCS_ParseCode read_signal(FILE* datafile, struct HPCS_TVPair** pairs, size_t* pairs_count,
-				       const size_t scans_start, const double signal_step, const double signal_shift)
+				       const size_t scans_start, const double signal_step, const double signal_shift, const enum HPCS_GenType gentype)
+{
+	switch (gentype) {
+	case GENTYPE_ADC_LC:
+	case GENTYPE_ADC_LC2:
+		return read_signal_30_130(datafile, pairs, pairs_count, scans_start,
+					  signal_step, signal_shift);
+	case GENTYPE_GC_B:
+		return read_signal_179(datafile, pairs, pairs_count, scans_start,
+				       signal_step, signal_shift);
+	default:
+		assert("Invalid gentype");
+		return PARSE_E_INTERNAL;
+	}
+}
+
+static enum HPCS_ParseCode read_signal_30_130(FILE* datafile, struct HPCS_TVPair** pairs, size_t* pairs_count,
+					      const size_t scans_start, const double signal_step, const double signal_shift)
 {
         size_t alloc_size = (size_t)((60 * 25));
 	bool read_file = true;
@@ -983,7 +1022,7 @@ static enum HPCS_ParseCode read_signal(FILE* datafile, struct HPCS_TVPair** pair
 	if (*pairs == NULL)
 		return PARSE_E_NO_MEM;
 
-	PR_DEBUGF("Reading signal, first mid-marker expected at segment %lu\n", next_marker_idx);
+	PR_DEBUGF("Reading 30/130 signal, first mid-marker expected at segment %lu\n", next_marker_idx);
 
 	while (read_file) {
 		r = fread(raw, SEGMENT_SIZE, 1, datafile);
@@ -1006,17 +1045,8 @@ static enum HPCS_ParseCode read_signal(FILE* datafile, struct HPCS_TVPair** pair
 
 		/* Expand storage if there is more data than we can store */
 		if (alloc_size == data_segments_read) {
-			struct HPCS_TVPair* nptr;
-                        alloc_size += (size_t)((60 * 25));
-			nptr = realloc(*pairs, sizeof(struct HPCS_TVPair) * alloc_size);
-
-			if (nptr == NULL) {
-				free(*pairs);
-				*pairs = NULL;
+			if (expand_storage(pairs, &alloc_size) == PARSE_E_NO_MEM)
 				return PARSE_E_NO_MEM;
-			}
-
-			*pairs = nptr;
 		}
 
 		/* Check for markers */
@@ -1077,7 +1107,65 @@ static enum HPCS_ParseCode read_signal(FILE* datafile, struct HPCS_TVPair** pair
 	return PARSE_OK;
 }
 
-static enum HPCS_ParseCode read_timing(FILE* datafile, struct HPCS_TVPair*const pairs, double *sampling_rate, const size_t data_count)
+static enum HPCS_ParseCode read_signal_179(FILE* datafile, struct HPCS_TVPair** pairs, size_t* pairs_count,
+					   const size_t scans_start, const double signal_step, const double signal_shift)
+{
+        size_t alloc_size = (size_t)((60 * 25));
+	size_t segments_read = 0;
+
+	fseek(datafile, scans_start, SEEK_SET);
+	if (feof(datafile))
+		return PARSE_E_OUT_OF_RANGE;
+	if (ferror(datafile))
+		return PARSE_E_CANT_READ;
+
+	*pairs = malloc(sizeof(struct HPCS_TVPair) * alloc_size);
+	if (*pairs == NULL)
+		return PARSE_E_NO_MEM;
+
+	PR_DEBUG("Reading 179 signal\n");
+
+	while (true) {
+		char raw[8];
+		double value;
+
+		size_t r = fread(raw, DOUBLE_SEGMENT_SIZE, 1, datafile);
+
+		if (ferror(datafile)) {
+			free(*pairs);
+			*pairs = NULL;
+			PR_DEBUG("Error reading stream - ferror\n");
+			return PARSE_E_CANT_READ;
+		}
+		if (feof(datafile))
+			break;
+
+		if (r != 1) {
+			free(*pairs);
+			*pairs = NULL;
+			PR_DEBUGF("Error reading stream, r=%lu\n", r);
+			return PARSE_E_CANT_READ;
+		}
+
+		/* Expand storage if there is more data than we can store */
+		if (alloc_size == segments_read) {
+			if (expand_storage(pairs, &alloc_size) == PARSE_E_NO_MEM)
+				return PARSE_E_NO_MEM;
+		}
+
+		le_to_cpu(raw);
+
+		value = *(double*)(&raw);
+		value = value * signal_step + signal_shift;
+		(*pairs)[segments_read].value = value;
+		segments_read++;
+	}
+
+	*pairs_count = segments_read;
+	return PARSE_OK;
+}
+
+static enum HPCS_ParseCode read_timing(FILE* datafile, struct HPCS_TVPair*const pairs, double *sampling_rate, const size_t data_count, const bool is_type_179)
 {
 	int32_t xmin;
 	int32_t xmax;
@@ -1101,8 +1189,13 @@ static enum HPCS_ParseCode read_timing(FILE* datafile, struct HPCS_TVPair*const 
 	be_to_cpu_val(xmin);
 	be_to_cpu_val(xmax);
 
-	xminf = (double)xmin / 60000.0;
-	xmaxf = (double)xmax / 60000.0;
+	if (is_type_179) {
+		xminf = (*(float*)(&xmin)) / 60000.0f;
+		xmaxf = (*(float*)(&xmax)) / 60000.0f;
+	} else {
+		xminf = (double)xmin / 60000.0;
+		xmaxf = (double)xmax / 60000.0;
+	}
 
 	time_step = (xmaxf - xminf) / data_count;
 	*sampling_rate = 1.0 / (time_step * 60.0);
