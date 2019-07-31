@@ -1167,6 +1167,8 @@ static enum HPCS_ParseCode read_signal_179(FILE* datafile, struct HPCS_TVPair** 
 
 static enum HPCS_ParseCode read_timing(FILE* datafile, struct HPCS_TVPair*const pairs, double *sampling_rate, const size_t data_count, const bool is_type_179)
 {
+	assert(sizeof(int32_t) == sizeof(float));
+
 	union { int32_t i; float f; } xmin;
 	union { int32_t i; float f; } xmax;
 	double xminf;
