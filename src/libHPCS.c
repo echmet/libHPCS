@@ -1167,8 +1167,8 @@ static enum HPCS_ParseCode read_signal_179(FILE* datafile, struct HPCS_TVPair** 
 
 static enum HPCS_ParseCode read_timing(FILE* datafile, struct HPCS_TVPair*const pairs, double *sampling_rate, const size_t data_count, const bool is_type_179)
 {
-	int32_t xmin;
-	int32_t xmax;
+	union { int32_t i; float f; } xmin;
+	union { int32_t i; float f; } xmax;
 	double xminf;
 	double xmaxf;
 	double time_step;
@@ -1186,15 +1186,15 @@ static enum HPCS_ParseCode read_timing(FILE* datafile, struct HPCS_TVPair*const 
 	if (fread(&xmax, LARGE_SEGMENT_SIZE, 1, datafile) < 1)
 		return PARSE_E_CANT_READ;
 
-	be_to_cpu_val(xmin);
-	be_to_cpu_val(xmax);
+	be_to_cpu_val(xmin.i);
+	be_to_cpu_val(xmax.i);
 
 	if (is_type_179) {
-		xminf = (*(float*)(&xmin)) / 60000.0f;
-		xmaxf = (*(float*)(&xmax)) / 60000.0f;
+		xminf = xmin.f / 60000.0f;
+		xmaxf = xmax.f / 60000.0f;
 	} else {
-		xminf = (double)xmin / 60000.0;
-		xmaxf = (double)xmax / 60000.0;
+		xminf = (double)xmin.i / 60000.0;
+		xmaxf = (double)xmax.i / 60000.0;
 	}
 
 	time_step = (xmaxf - xminf) / data_count;
