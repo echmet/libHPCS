@@ -92,13 +92,73 @@ struct HPCS_MethodInfo {
 	size_t count;
 };
 
+/**
+ * Allocates \ref HPCS_MeasuredData object.
+ *
+ * The allocated object must be freed by calling \ref hpcs_free_mdata().
+ *
+ * \return Pointer to the allocated \ref HPCS_MeasuredData object.
+ */
 LIBHPCS_API struct HPCS_MeasuredData* LIBHPCS_CC hpcs_alloc_mdata();
+
+/**
+ * Allocates \ref HPCS_MethodInfo object.
+ *
+ * The allocated object must be freed by calling \ref hpcs_free_minfo().
+ *
+ * \return Pointer to the allocated \ref HPCS_MeasuredData object.
+ */
 LIBHPCS_API struct HPCS_MethodInfo* LIBHPCS_CC hpcs_alloc_minfo();
+
+/**
+ * Frees \ref HPCS_MeasuredData object.
+ *
+ * \param mdata Pointer to object to free.
+ */
 LIBHPCS_API void LIBHPCS_CC hpcs_free_mdata(struct HPCS_MeasuredData* const mdata);
+
+/**
+ * Frees \rec HPCS_MethodInfo object.
+ *
+ * \param minfo Pointer to object to free.
+ */
 LIBHPCS_API void LIBHPCS_CC hpcs_free_minfo(struct HPCS_MethodInfo* const minfo);
-LIBHPCS_API const char* LIBHPCS_CC hpcs_error_to_string(const enum HPCS_RetCode);
+
+/**
+ * Translates \ref HPCS_RetCode to a string with human-readable error message.
+ *
+ * \param err \ref HPCS_RetCode to translate.
+ * \return String with human-readable error message.
+ */
+LIBHPCS_API const char* LIBHPCS_CC hpcs_error_to_string(const enum HPCS_RetCode err);
+
+/**
+ * Reads content of a HP/Agilent ChemStation data file.
+ *
+ * \param filename Path to the file to read.
+ * \param mdata Pointer to \ref HPCS_MeasuredData object to be filled out by this function.
+ * \return \ref HPCS_RetCode to indicate if the operation succeeded.
+ */
 LIBHPCS_API enum HPCS_RetCode LIBHPCS_CC hpcs_read_mdata(const char* filename, struct HPCS_MeasuredData* mdata);
+
+/**
+ * Reads content of a HP/Agilent ChemStation data file.
+ * Unlike \ref hpcs_read_mdata() this function reads only the header (metadata)
+ * associated with the measurement but not the signal trace.
+ *
+ * \param filename Path to the file to read.
+ * \param mdata Pointer to \ref HPCS_MeasuredData object to be filled out by this function.
+ * \return \ref HPCS_RetCode to indicate if the operation succeeded.
+ */
 LIBHPCS_API enum HPCS_RetCode LIBHPCS_CC hpcs_read_mheader(const char* filename, struct HPCS_MeasuredData* mdata);
+
+/**
+ * Reads the method information block of a HP/Agilent ChemStation data file.
+ *
+ * \param filename Path to the file to read.
+ * \param mdata Pointer to \ref HPCS_MethodInfo object to be filled out by this function.
+ * \return \ref HPCS_RetCode to indicate if the operation succeeded.
+ */
 LIBHPCS_API enum HPCS_RetCode LIBHPCS_CC hpcs_read_minfo(const char* filename, struct HPCS_MethodInfo* minfo);
 
 #ifdef __cplusplus
