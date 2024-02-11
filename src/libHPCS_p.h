@@ -48,7 +48,7 @@ typedef long HPCS_segsize;
 #else
 typedef size_t HPCS_offset;
 typedef size_t HPCS_segsize;
-#endif // _MSC_VER
+#endif /* _MSC_VER */
 
 const char FILE_TYPE_ID_ADC_A[] = "ADC CHANNEL A";
 const char FILE_TYPE_ID_ADC_B[] = "ADC CHANNEL B";
