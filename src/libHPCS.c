@@ -116,7 +116,7 @@ enum HPCS_RetCode hpcs_read_mdata(const char* filename, struct HPCS_MeasuredData
 	enum HPCS_ChemStationVer cs_ver;
 	double signal_step;
 	double signal_shift;
-	size_t scans_start;
+	HPCS_offset scans_start;
 
 	if (mdata == NULL)
 		return HPCS_E_NULLPTR;
@@ -966,7 +966,7 @@ static enum HPCS_ParseCode read_scans_start(FILE* datafile, size_t *scans_start)
 }
 
 static enum HPCS_ParseCode read_signal(FILE* datafile, struct HPCS_TVPair** pairs, size_t* pairs_count,
-				       const size_t scans_start, const double signal_step, const double signal_shift, const enum HPCS_GenType gentype)
+				       const HPCS_offset scans_start, const double signal_step, const double signal_shift, const enum HPCS_GenType gentype)
 {
 	switch (gentype) {
 	case GENTYPE_ADC_LC:
@@ -983,7 +983,7 @@ static enum HPCS_ParseCode read_signal(FILE* datafile, struct HPCS_TVPair** pair
 }
 
 static enum HPCS_ParseCode read_signal_30_130(FILE* datafile, struct HPCS_TVPair** pairs, size_t* pairs_count,
-					      const size_t scans_start, const double signal_step, const double signal_shift)
+					      const HPCS_offset scans_start, const double signal_step, const double signal_shift)
 {
         size_t alloc_size = (size_t)((60 * 25));
 	bool read_file = true;
@@ -1108,7 +1108,7 @@ static enum HPCS_ParseCode read_signal_30_130(FILE* datafile, struct HPCS_TVPair
 }
 
 static enum HPCS_ParseCode read_signal_179(FILE* datafile, struct HPCS_TVPair** pairs, size_t* pairs_count,
-					   const size_t scans_start, const double signal_step, const double signal_shift)
+					   const HPCS_offset scans_start, const double signal_step, const double signal_shift)
 {
         size_t alloc_size = (size_t)((60 * 25));
 	size_t segments_read = 0;
@@ -1434,9 +1434,9 @@ static enum HPCS_ParseCode __win32_parse_native_method_info_line(char** name, ch
 static enum HPCS_ParseCode __win32_latin1_to_utf8(char** target, const char *s)
 {
 	wchar_t* intermediate;
-	size_t mb_size;
+	int mb_size;
 
-	size_t w_size = MultiByteToWideChar(28591, 0, s, -1, NULL, 0);
+	int w_size = MultiByteToWideChar(28591, 0, s, -1, NULL, 0);
 	if (w_size == 0) {
 		PR_DEBUGF("Count MultiByteToWideChar() error 0x%x\n", GetLastError());
 		return PARSE_E_INTERNAL;
@@ -1477,7 +1477,7 @@ static enum HPCS_ParseCode __win32_latin1_to_utf8(char** target, const char *s)
 
 static bool __win32_utf8_to_wchar(wchar_t** target, const char *s)
 {
-	size_t w_size = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, s, -1, NULL, 0);
+	int w_size = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, s, -1, NULL, 0);
 	if (w_size == 0) {
 		PR_DEBUGF("Count MultiByteToWideChar() error 0x%x\n", GetLastError());
 		return false;
