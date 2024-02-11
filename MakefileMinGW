@@ -1,0 +1,19 @@
+SRCS = src/libHPCS.c
+
+DEFS=-D_UNICODE -DUNICODE \
+	-DWIN32_LEAN_AND_MEAN \
+	-DNOMINMAX \
+	-D_HPCS_LITTLE_ENDIAN \
+	-D_HPCS_BUILD_DLL \
+	-DNDEBUG \
+	-DWIN32 -D_WIN32 \
+	-D_WIN32_WINNT=0x0501 \
+	-Iinclude
+
+.PHONY: clean
+
+all: $(SRCS)
+	x86_64-w64-mingw32-gcc $(DEFS) -O2 -municode $(SRCS) -shared -o libHPCS.dll -Wl,--out-implib,libHPCS.dll.a -Wl,--output-def,libHPCS.def
+
+clean:
+	rm *.dll *.dll.a *.def
