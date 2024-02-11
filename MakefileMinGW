@@ -1,4 +1,5 @@
 SRCS = src/libHPCS.c
+BUILDDIR = mingw_build
 
 DEFS=-D_UNICODE -DUNICODE \
 	-DWIN32_LEAN_AND_MEAN \
@@ -13,7 +14,8 @@ DEFS=-D_UNICODE -DUNICODE \
 .PHONY: clean
 
 all: $(SRCS)
-	x86_64-w64-mingw32-gcc $(DEFS) -O2 -municode $(SRCS) -shared -o libHPCS.dll -Wl,--out-implib,libHPCS.dll.a -Wl,--output-def,libHPCS.def
+	@[ ! -d $(BUILDDIR) ] && mkdir $(BUILDDIR) || true
+	x86_64-w64-mingw32-gcc $(DEFS) -O2 -municode $(SRCS) -shared -o $(BUILDDIR)/libHPCS.dll -Wl,--out-implib,$(BUILDDIR)/libHPCS.dll.a -Wl,--output-def,$(BUILDDIR)/libHPCS.def
 
 clean:
-	rm *.dll *.dll.a *.def
+	rm $(BUILDDIR)/*.dll $(BUILDDIR)/*.dll.a $(BUILDDIR)/*.def
