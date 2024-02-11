@@ -15,7 +15,7 @@ typedef int bool;
 #include <stdio.h>
 
 #ifdef _WIN32
-#include <Windows.h>
+#include <windows.h>
 #define HPCS_NChar WCHAR
 #define HPCS_UFH FILE*
 #else

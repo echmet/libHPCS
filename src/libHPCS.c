@@ -12,11 +12,11 @@ extern "C" {
 #define _WIN32_WINNT_WIN8 0x0602
 #endif
 #if _WIN32_WINNT > _WIN32_WINNT_WIN8
-#include <Stringapiset.h>
+#include <stringapiset.h>
 #else
-#include <WinNls.h>
+#include <winnls.h>
 #endif
-#include <Shlwapi.h>
+#include <shlwapi.h>
 #else
 #include <unicode/ustdio.h>
 #endif
@@ -1365,27 +1365,14 @@ static enum HPCS_ParseCode __win32_next_native_line(FILE* fh, WCHAR* line, int32
 static FILE* __win32_open_data_file(const char* filename)
 {
 	FILE* fh;
-	WCHAR* w_filename;
-	int w_size;
+	WCHAR* win_filename;
 
-	/* Get the required size */
-	w_size = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, filename, -1, NULL, 0);
-	if (w_size == 0) {
-		PR_DEBUGF("Count MultiByteToWideChar() error: %x\n", GetLastError());
-		return NULL;
-	}
-	w_filename = calloc(w_size, sizeof(WCHAR));
-	if (w_filename == NULL)
+	if (!__win32_utf8_to_wchar(&win_filename, filename))
 		return NULL;
 
-	if (MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, filename, -1, w_filename, w_size) == 0) {
-		PR_DEBUGF("Convert MultiByteToWideChar() error: %x\n", GetLastError());
-		free(w_filename);
-		return NULL;
-	}
-	fh = _wfopen(w_filename, L"r, ccs=UNICODE");
+	fh = _wfopen(win_filename, L"r, ccs=UNICODE");
 
-	free(w_filename);
+	free(win_filename);
 	return fh;
 }
 
