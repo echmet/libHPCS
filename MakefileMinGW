@@ -13,7 +13,11 @@ DEFS=-D_UNICODE -DUNICODE \
 
 .PHONY: clean
 
-all: $(SRCS)
+win32: $(SRCS)
+	@[ ! -d $(BUILDDIR) ] && mkdir $(BUILDDIR) || true
+	i686-w64-mingw32-gcc $(DEFS) -O2 -municode $(SRCS) -shared -o $(BUILDDIR)/libHPCS.dll -Wl,--out-implib,$(BUILDDIR)/libHPCS.dll.a -Wl,--output-def,$(BUILDDIR)/libHPCS.def
+
+win64: $(SRCS)
 	@[ ! -d $(BUILDDIR) ] && mkdir $(BUILDDIR) || true
 	x86_64-w64-mingw32-gcc $(DEFS) -O2 -municode $(SRCS) -shared -o $(BUILDDIR)/libHPCS.dll -Wl,--out-implib,$(BUILDDIR)/libHPCS.dll.a -Wl,--output-def,$(BUILDDIR)/libHPCS.def
 

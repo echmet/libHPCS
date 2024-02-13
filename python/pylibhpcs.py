@@ -3,13 +3,18 @@ from ctypes import (
     c_uint8, c_uint16, c_uint32, c_int,
     c_char_p, c_size_t,
     c_double,
+    c_void_p,
+    sizeof,
     Structure, POINTER,
     CDLL
 )
 
 # Load the library based on the operating system
 if platform.system() == 'Windows':
-    lib_name = './libHPCS.dll'
+    if sizeof(c_void_p) == 8:
+        lib_name = './win64/libHPCS.dll'
+    else:
+        lib_name = './win32/libHPCS.dll'
 else:
     lib_name = './libHPCS.so'
 
